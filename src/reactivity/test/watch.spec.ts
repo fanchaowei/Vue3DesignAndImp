@@ -77,6 +77,7 @@ describe('watch', () => {
 
     let finalData: any
     let times = 0
+    let res: any
     watch(obj, async (newValue: any, oldValue: any, onInvalidate: any) => {
       // 定义一个标志，代表当前副作用函数是否过期，false 代表没有过期
       let expired = false
@@ -89,12 +90,17 @@ describe('watch', () => {
 
       // 模拟发送网络请求的操作
       await setTimeout(() => {
+        if (!times) {
+          res = 10
+        } else {
+          res = 20
+        }
         times++
-      }, 0)
+      }, 1000)
 
       // 只有副作用函数没有过期，才执行该后续操作。
       if (!expired) {
-        finalData = times
+        finalData = res
       }
     })
     obj.foo++
@@ -103,7 +109,7 @@ describe('watch', () => {
     // })
 
     setTimeout(() => {
-      expect(finalData).toBe(1)
+      expect(finalData).toBe(20)
     }, 0)
   })
 })
