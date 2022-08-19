@@ -3,10 +3,15 @@ import { effect } from './effect'
 /**
  *
  * @param source 响应式数据
- * @param cb 回调函数
+ * @param cb 用户传入的回调函数
+ * @param options 用户传入的配置
  */
 export function watch(source: any, cb: any, options: any = {}) {
   let getter
+  let oldValue: any, newValue: any
+  // 储存用户注册的过期回调
+  let cleanup: any
+
   if (typeof source === 'function') {
     // 是函数则说明用户传入了 getter 直接赋值
     getter = source
@@ -14,12 +19,23 @@ export function watch(source: any, cb: any, options: any = {}) {
     getter = () => traverse(source)
   }
 
-  let oldValue: any, newValue: any
+  function onInvalidate(fn: any) {
+    // 将过期回调赋值到 cleanup 上
+    cleanup = fn
+  }
+
   // 将 scheduler 抽离成
   const job = () => {
     // 执行副作用函数获取新值
     newValue = effectFn()
-    cb(newValue, oldValue)
+
+    // 在调用回调函数之前，先执行过期回调
+    if (cleanup) {
+      cleanup()
+    }
+
+    // 执行用户传入的回调函数
+    cb(newValue, oldValue, onInvalidate)
     // 在执行 cb 后，新值就变成了旧值
     oldValue = newValue
   }

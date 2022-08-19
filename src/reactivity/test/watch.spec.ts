@@ -68,4 +68,42 @@ describe('watch', () => {
       flush: 'post',
     })
   })
+
+  // 避免因在 watch 内部编写请求/异步，多次触发该 watch，导致返回的结果紊乱。
+  // 新增 onInvalidate
+  it('onInvalidate', () => {
+    const data = { foo: 1, bar: 2 }
+    const obj = reactive(data)
+
+    let finalData: any
+    let times = 0
+    watch(obj, async (newValue: any, oldValue: any, onInvalidate: any) => {
+      // 定义一个标志，代表当前副作用函数是否过期，false 代表没有过期
+      let expired = false
+
+      // 调用该特定函数，注册一个回调。
+      onInvalidate(() => {
+        // 将副作用函数设置为过期
+        expired = true
+      })
+
+      // 模拟发送网络请求的操作
+      await setTimeout(() => {
+        times++
+      }, 0)
+
+      // 只有副作用函数没有过期，才执行该后续操作。
+      if (!expired) {
+        finalData = times
+      }
+    })
+    obj.foo++
+    // Promise.resolve().then(() => {
+    //   obj.foo++
+    // })
+
+    setTimeout(() => {
+      expect(finalData).toBe(1)
+    }, 0)
+  })
 })
