@@ -7,10 +7,19 @@ const bucket = new WeakMap()
 
 export const reactive = (data: any) => {
   return new Proxy(data, {
-    get(target, key) {
+    /**
+     * 对象的基本语义 get
+     * @param target 原对象
+     * @param key 属性名
+     * @param receiver 代理对象
+     * @returns
+     */
+    get(target, key, receiver) {
       // 依赖收集
       track(target, key)
-      return target[key]
+      // Reflect.get() 的第三个参数相当于指定 this 的指向，
+      // 将代理对象指定为 this ，有利于解决一些属性内部的 this 指向了原对象，导致无法副作用函数执行的问题。
+      return Reflect.get(target, key, receiver)
     },
     set(target, key, value) {
       target[key] = value
