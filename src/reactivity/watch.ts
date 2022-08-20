@@ -9,7 +9,7 @@ import { effect } from './effect'
 export function watch(source: any, cb: any, options: any = {}) {
   let getter
   let oldValue: any, newValue: any
-  // 储存用户注册的过期回调
+  // 储存用户注册的过期回调，添加该记录标识，就是为了在本次执行的时候，能清除上次的副作用函数。
   let cleanup: any
 
   if (typeof source === 'function') {
