@@ -27,6 +27,15 @@ export const reactive = (data: any) => {
       trigger(target, key)
       return true
     },
+    // 是否含有某个属性，拦截 in 修饰符
+    has(target, key) {
+      // 依赖收集
+      track(target, key)
+      return Reflect.has(target, key)
+    },
+    // 拦截 for...in 循环
+    // ownKeys(target) {
+    // }
   })
 }
 
@@ -35,10 +44,12 @@ export function track(target: any, key: any) {
   // 如果不存在副作用函数，则返回
   if (!activeEffect) return
   // 从桶中一次通过 target -> key 来获取对应的依赖，如果不存在则进行新建
+  // 此时通过对象取出了对象对应的 Map 数组
   let depsMap = bucket.get(target)
   if (!depsMap) {
     bucket.set(target, (depsMap = new Map()))
   }
+  // 通过对象属性取出对应的副作用函数数组
   let deps = depsMap.get(key)
   if (!deps) {
     depsMap.set(key, (deps = new Set()))
