@@ -1,9 +1,13 @@
+import { triggerType } from '../shared/effect'
+
 // 记录需要触发依赖的副作用函数
 let activeEffect: any
 // 为了避免嵌套的 effect 中，activeEffect 互相影响，所以增加一个 stack 来处理，当有新增的副作用函数就存入，执行完就推出。
 const effectStack: any = []
-
+// 存储 对象 -> 属性 -> 副作用函数 的桶。
 const bucket = new WeakMap()
+// 拦截 for...in 循环所使用的枚举
+const ITERATE_KEY = Symbol()
 
 export const reactive = (data: any) => {
   return new Proxy(data, {
@@ -21,11 +25,17 @@ export const reactive = (data: any) => {
       // 将代理对象指定为 this ，有利于解决一些属性内部的 this 指向了原对象，导致无法副作用函数执行的问题。
       return Reflect.get(target, key, receiver)
     },
-    set(target, key, value) {
-      target[key] = value
+    set(target, key, newVal, receiver) {
+      // 判断是新增还是修改
+      const type = Object.prototype.hasOwnProperty.call(target, key)
+        ? triggerType.SET
+        : triggerType.ADD
+
+      const res = Reflect.set(target, key, newVal, receiver)
+      // target[key] = newVal
       // 触发依赖
-      trigger(target, key)
-      return true
+      trigger(target, key, type)
+      return res
     },
     // 是否含有某个属性，拦截 in 修饰符
     has(target, key) {
@@ -34,8 +44,11 @@ export const reactive = (data: any) => {
       return Reflect.has(target, key)
     },
     // 拦截 for...in 循环
-    // ownKeys(target) {
-    // }
+    ownKeys(target) {
+      // 因为 ownKey 只能拿到整个 target 对象，而不能拿到具体的 key 属性，所以使用一个枚举标识来绑定
+      track(target, ITERATE_KEY)
+      return Reflect.ownKeys(target)
+    },
   })
 }
 
@@ -61,10 +74,11 @@ export function track(target: any, key: any) {
 }
 
 // 触发依赖
-export function trigger(target: any, key: any) {
+export function trigger(target: any, key: any, type: any) {
   // 依次获取对应依赖
   const depsMap = bucket.get(target)
   if (!depsMap) return
+  // 获取与属性 key 相关的副作用函数
   const effects = depsMap.get(key)
   // 执行依赖
   // effects && effects.forEach((fn) => fn())
@@ -79,6 +93,19 @@ export function trigger(target: any, key: any) {
         effectsToRun.add(effectFn)
       }
     })
+
+  // 只有操作是添加操作时，才触发相关的副作用函数
+  if (type === triggerType.ADD) {
+    // 获取与枚举标识 ITERATE_KEY 相关的副作用函数
+    const iterateEffects = depsMap.get(ITERATE_KEY)
+    // 将与枚举标识 ITERATE_KEY 关联的副作用函数也取出添加到 effectsToRun 中
+    iterateEffects &&
+      iterateEffects.forEach((effectFn: any) => {
+        if (effectFn !== activeEffect) {
+          effectsToRun.add(effectFn)
+        }
+      })
+  }
   effectsToRun &&
     effectsToRun.forEach((effectFn: any) => {
       // 如果副作用函数存在调度器函数，则调用调度器，并将副作用函数作为参数传入

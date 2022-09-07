@@ -43,7 +43,33 @@ describe('effect', () => {
 
   // 拦截 for...in 循环
   it('for...in', () => {
-    const data = { bar: 2 }
+    const data = { foo: 1 }
     const obj = reactive(data)
+    let times = 0
+
+    const effectFn = effect(() => {
+      for (const key in obj) {
+        times++
+      }
+    })
+    expect(times).toBe(1)
+    obj.bar = 2
+    expect(times).toBe(3)
+  })
+
+  //
+  it('修改对象属性，for...in 副作用函数无需执行', () => {
+    const data = { foo: 1 }
+    const obj = reactive(data)
+    let times = 0
+
+    const effectFn = effect(() => {
+      for (const key in obj) {
+        times++
+      }
+    })
+    expect(times).toBe(1)
+    obj.foo = 2
+    expect(times).toBe(1)
   })
 })
