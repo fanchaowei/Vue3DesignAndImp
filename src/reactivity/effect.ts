@@ -7,50 +7,7 @@ const effectStack: any = []
 // 存储 对象 -> 属性 -> 副作用函数 的桶。
 const bucket = new WeakMap()
 // 拦截 for...in 循环所使用的枚举
-const ITERATE_KEY = Symbol()
-
-export const reactive = (data: any) => {
-  return new Proxy(data, {
-    /**
-     * 对象的基本语义 get
-     * @param target 原对象
-     * @param key 属性名
-     * @param receiver 代理对象
-     * @returns
-     */
-    get(target, key, receiver) {
-      // 依赖收集
-      track(target, key)
-      // Reflect.get() 的第三个参数相当于指定 this 的指向，
-      // 将代理对象指定为 this ，有利于解决一些属性内部的 this 指向了原对象，导致无法副作用函数执行的问题。
-      return Reflect.get(target, key, receiver)
-    },
-    set(target, key, newVal, receiver) {
-      // 判断是新增还是修改
-      const type = Object.prototype.hasOwnProperty.call(target, key)
-        ? triggerType.SET
-        : triggerType.ADD
-
-      const res = Reflect.set(target, key, newVal, receiver)
-      // target[key] = newVal
-      // 触发依赖
-      trigger(target, key, type)
-      return res
-    },
-    // 是否含有某个属性，拦截 in 修饰符
-    has(target, key) {
-      // 依赖收集
-      track(target, key)
-      return Reflect.has(target, key)
-    },
-    // 拦截 for...in 循环
-    ownKeys(target) {
-      // 因为 ownKey 只能拿到整个 target 对象，而不能拿到具体的 key 属性，所以使用一个枚举标识来绑定
-      track(target, ITERATE_KEY)
-      return Reflect.ownKeys(target)
-    },
-  })
-}
+export const ITERATE_KEY = Symbol()
 
 // 依赖收集
 export function track(target: any, key: any) {
@@ -95,7 +52,7 @@ export function trigger(target: any, key: any, type: any) {
     })
 
   // 只有操作是添加操作时，才触发相关的副作用函数
-  if (type === triggerType.ADD) {
+  if (type === triggerType.ADD || type === triggerType.DELETE) {
     // 获取与枚举标识 ITERATE_KEY 相关的副作用函数
     const iterateEffects = depsMap.get(ITERATE_KEY)
     // 将与枚举标识 ITERATE_KEY 关联的副作用函数也取出添加到 effectsToRun 中

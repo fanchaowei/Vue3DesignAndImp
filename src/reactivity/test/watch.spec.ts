@@ -1,4 +1,4 @@
-import { reactive } from '../effect'
+import { reactive } from '../reactive'
 import { watch } from '../watch'
 
 describe('watch', () => {
