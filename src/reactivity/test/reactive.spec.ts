@@ -66,4 +66,36 @@ describe('reactive', () => {
     expect(obj1.baz).toBe(1)
     expect(obj1.foo.bar).toBe(2)
   })
+
+  /**
+   * 代理数组
+   * 下列一系列单元测试都是针对数组的
+   */
+  it('array', () => {
+    const arr = reactive(['foo'])
+
+    // 读取
+    const effecFn = jest.fn(() => {
+      console.log(arr[0])
+    })
+    effect(effecFn)
+    arr[0] = 'bar'
+    expect(effecFn).toHaveBeenCalledTimes(2)
+
+    // 修改数组的长度
+    arr.length = 0
+    expect(effecFn).toHaveBeenCalledTimes(3)
+  })
+  it('对新的索引值进行赋值', () => {
+    const arr = reactive(['foo'])
+
+    const effecFn = jest.fn(() => {
+      console.log(arr.length)
+    })
+
+    effect(effecFn)
+
+    arr[1] = 'bar'
+    expect(effecFn).toHaveBeenCalledTimes(2)
+  })
 })

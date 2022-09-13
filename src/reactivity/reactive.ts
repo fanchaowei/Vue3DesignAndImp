@@ -45,16 +45,20 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
       return res
     },
     set(target, key: any, newVal, receiver) {
-      // 获取旧值
-      const oldVal = target[key]
-
       if (isReadOnly) {
         console.warn(`属性 ${key} 是只读的`)
         return true
       }
 
-      // 判断是新增还是修改
-      const type = Object.prototype.hasOwnProperty.call(target, key)
+      // 获取旧值
+      const oldVal = target[key]
+
+      // 在进行后续操作之前，需要先判断是数组还是对象（因为数组和对象新增修改的判断方式是不同的），然后判断是新增还是修改
+      const type = Array.isArray(target)
+        ? Number(key) < target.length
+          ? triggerType.SET
+          : triggerType.ADD
+        : Object.prototype.hasOwnProperty.call(target, key)
         ? triggerType.SET
         : triggerType.ADD
 
@@ -66,7 +70,8 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
         // 后面的新旧值和自己判断是否相等，是避免新旧值是 NaN，因为 NaN 在任何情况下都是 NaN !== NaN
         if (oldVal !== newVal && (oldVal === oldVal || newVal === newVal)) {
           // 触发依赖
-          trigger(target, key, type)
+          // 第四个参数用于对数组的 length 操作
+          trigger(target, key, type, newVal)
         }
       }
       return res
@@ -97,7 +102,7 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
 
       if (hasKey && res) {
         // 只有删除自己的属性成功，才触发依赖
-        trigger(target, key, triggerType.DELETE)
+        trigger(target, key, triggerType.DELETE, null)
       }
       return res
     },

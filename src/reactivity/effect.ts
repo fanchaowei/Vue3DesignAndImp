@@ -31,7 +31,7 @@ export function track(target: any, key: any) {
 }
 
 // 触发依赖
-export function trigger(target: any, key: any, type: any) {
+export function trigger(target: any, key: any, type: any, newVal: any) {
   // 依次获取对应依赖
   const depsMap = bucket.get(target)
   if (!depsMap) return
@@ -50,6 +50,30 @@ export function trigger(target: any, key: any, type: any) {
         effectsToRun.add(effectFn)
       }
     })
+
+  // 如果是数组，并且是添加操作，则将和数组 length 有关的副作用函数取出执行
+  if (type === triggerType.ADD && Array.isArray(target)) {
+    const lengthEffects = depsMap.get('length')
+    lengthEffects &&
+      lengthEffects.forEach((effectFn: any) => {
+        if (effectFn !== activeEffect) {
+          effectsToRun.add(effectFn)
+        }
+      })
+  }
+  // 如果 target 是数组并且修改了 length 属性
+  if (Array.isArray(target) && key === 'length') {
+    // 我们需要找出索引大于等于新设置的值的元素(因为这些值现在都是超出长度的值，会被删除)，取出它们相关的副作用函数，存入 effectsToTun 中等待执行
+    depsMap.forEach((effects: any, key: any) => {
+      if (key >= newVal) {
+        effects.forEach((effectFn: any) => {
+          if (effectFn !== activeEffect) {
+            effectsToRun.add(effectFn)
+          }
+        })
+      }
+    })
+  }
 
   // 只有操作是添加操作时，才触发相关的副作用函数
   if (type === triggerType.ADD || type === triggerType.DELETE) {
