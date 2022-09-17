@@ -98,4 +98,19 @@ describe('reactive', () => {
     arr[1] = 'bar'
     expect(effecFn).toHaveBeenCalledTimes(2)
   })
+  it('遍历数组', () => {
+    const arr = reactive(['foo'])
+
+    const effecFn = jest.fn(() => {
+      for (const key in arr) {
+        console.log(key)
+      }
+    })
+
+    effect(effecFn)
+
+    expect(effecFn).toHaveBeenCalledTimes(1)
+    arr.push('bar')
+    expect(effecFn).toHaveBeenCalledTimes(2)
+  })
 })
