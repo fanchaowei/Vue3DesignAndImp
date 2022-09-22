@@ -98,7 +98,7 @@ describe('reactive', () => {
     arr[1] = 'bar'
     expect(effecFn).toHaveBeenCalledTimes(2)
   })
-  it('遍历数组', () => {
+  it('for...in 遍历数组', () => {
     const arr = reactive(['foo'])
 
     const effecFn = jest.fn(() => {
@@ -112,5 +112,8 @@ describe('reactive', () => {
     expect(effecFn).toHaveBeenCalledTimes(1)
     arr.push('bar')
     expect(effecFn).toHaveBeenCalledTimes(2)
+    arr.length = 0
+    expect(effecFn).toHaveBeenCalledTimes(3)
   })
+  it('')
 })

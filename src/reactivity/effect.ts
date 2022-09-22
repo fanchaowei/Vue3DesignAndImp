@@ -31,7 +31,7 @@ export function track(target: any, key: any) {
 }
 
 // 触发依赖
-export function trigger(target: any, key: any, type: any, newVal: any) {
+export function trigger(target: any, key: any, type?: any, newVal?: any) {
   // 依次获取对应依赖
   const depsMap = bucket.get(target)
   if (!depsMap) return

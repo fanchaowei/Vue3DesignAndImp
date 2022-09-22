@@ -22,6 +22,12 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
       if (key === 'raw') {
         return target
       }
+
+      // 如果 key 的类型是 symbol 就不追踪，这是出于性能的考虑
+      if (!isReadOnly && typeof key === 'symbol') {
+        track(target, key)
+      }
+
       // Reflect.get() 的第三个参数相当于指定 this 的指向，
       // 将代理对象指定为 this ，有利于解决一些属性内部的 this 指向了原对象，导致无法副作用函数执行的问题。
       let res = Reflect.get(target, key, receiver)
@@ -84,8 +90,9 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
     },
     // 拦截 for...in 循环
     ownKeys(target) {
-      // 因为 ownKey 只能拿到整个 target 对象，而不能拿到具体的 key 属性，所以使用一个枚举标识来绑定
-      track(target, ITERATE_KEY)
+      // 因为 ownKey 只能拿到整个 target 对象，而不能拿到具体的 key 属性，所以使用一个 ITERATE_KEY 枚举标识来绑定
+      // for...in 循环还能循环数组，这里判断一下 target 是否是数组，如果是的话，取出与 length 有关的副作用函数
+      track(target, Array.isArray(target) ? 'length' : ITERATE_KEY)
       return Reflect.ownKeys(target)
     },
     // 删除拦截
