@@ -1,5 +1,6 @@
 import { triggerType } from '../shared/effect'
 import { track, trigger, ITERATE_KEY } from './effect'
+import { arrayInstrumentations } from '../shared/reactive'
 
 /**
  * 创建响应式数据
@@ -17,10 +18,15 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
      * @param receiver 代理对象
      * @returns
      */
-    get(target, key, receiver): any {
+    get(target: any, key: any, receiver): any {
       // 代理对象可通过 raw 属性访问原始对象
       if (key === 'raw') {
         return target
+      }
+
+      // 如果操作的目标对象是数组，并且 key 存在于 arrayInstrumentations 上，就返回定义在 arrayInstrumentations 上的值
+      if (Array.isArray(target) && arrayInstrumentations.hasOwnProperty(key)) {
+        return Reflect.get(arrayInstrumentations, key, receiver)
       }
 
       // 如果 key 的类型是 symbol 就不追踪，这是出于性能的考虑
@@ -116,8 +122,22 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
   })
 }
 
+// 存储原始对象到代理对象的映射，作用在于防止对象内还存在对象属性的情况下，导致内部的对象属性创建了多个代理对象
+const reactiveMap = new Map()
+
 export const reactive = (data: any) => {
-  return createReactive(data)
+  // 查看是否已经存在对应的代理对象了
+  const existionProxy = reactiveMap.get(data)
+  // 存在就输出该代理对象
+  if (existionProxy) {
+    return existionProxy
+  }
+
+  const proxy = createReactive(data)
+
+  // 将创建的代理对象存入 Map 中，供后续查找使用
+  reactiveMap.set(data, proxy)
+  return proxy
 }
 
 export const shallowReactive = (data: any) => {

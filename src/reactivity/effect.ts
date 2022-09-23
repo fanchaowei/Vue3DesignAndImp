@@ -1,4 +1,5 @@
 import { triggerType } from '../shared/effect'
+import { shouldTrack } from '../shared/reactive'
 
 // 记录需要触发依赖的副作用函数
 let activeEffect: any
@@ -11,8 +12,8 @@ export const ITERATE_KEY = Symbol()
 
 // 依赖收集
 export function track(target: any, key: any) {
-  // 如果不存在副作用函数，则返回
-  if (!activeEffect) return
+  // 如果不存在副作用函数，则返回；如果 shouldTrack 标识为 false ，代表不需要依赖收集
+  if (!activeEffect || !shouldTrack) return
   // 从桶中一次通过 target -> key 来获取对应的依赖，如果不存在则进行新建
   // 此时通过对象取出了对象对应的 Map 数组
   let depsMap = bucket.get(target)
