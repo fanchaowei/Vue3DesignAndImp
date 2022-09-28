@@ -1,6 +1,6 @@
 import { effect } from '../effect'
 import { reactive } from '../reactive'
-import { ref, toRefs } from '../ref'
+import { proxyRefs, ref, toRefs } from '../ref'
 
 describe('ref', () => {
   it('实现基础的 ref', () => {
@@ -34,5 +34,27 @@ describe('ref', () => {
     effect(effecFn)
     newObj.foo.value = 3
     expect(effecFn).toHaveBeenCalledTimes(2)
+  })
+  it('自动脱 ref', () => {
+    // 自动脱 ref ，指的是用户在 template 内使用；或对象属性访问时，可以不写 .value
+    const obj = reactive({
+      foo: '1',
+      bar: '2',
+    })
+    // 通过 proxyRefs 代理
+    // 在 setup 导出时，vue 会将到处的对象数据用 proxyRefs 处理一遍
+    const newObj = proxyRefs({
+      ...toRefs(obj),
+    })
+    expect(newObj.foo).toBe('1')
+    expect(newObj.bar).toBe('2')
+    newObj.foo = 100
+    expect(newObj.foo).toBe(100)
+  })
+  it('reactive 也存在脱 ref 能力', () => {
+    // vue 存在，这里未实现
+    const count = ref(0)
+    const obj = reactive({ count })
+    // expect(obj.count).toBe(0)
   })
 })

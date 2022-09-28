@@ -43,3 +43,23 @@ export function toRefs(obj: any) {
   }
   return ret
 }
+
+// 对是 ref 的响应式数据做脱 ref 处理
+export function proxyRefs(target: any) {
+  return new Proxy(target, {
+    get(target, key, receiver) {
+      const value: any = Reflect.get(target, key, receiver)
+
+      return value.__v_isRef ? value.value : value
+    },
+    set(target, key, newValue, receiver) {
+      const value = target[key]
+      if (value.__v_isRef) {
+        // 是 ref 则设置 .value
+        value.value = newValue
+        return true
+      }
+      return Reflect.set(target, key, newValue, receiver)
+    },
+  })
+}
