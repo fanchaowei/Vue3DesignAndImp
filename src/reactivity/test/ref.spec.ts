@@ -55,6 +55,8 @@ describe('ref', () => {
     // vue 存在，这里未实现
     const count = ref(0)
     const obj = reactive({ count })
+    // 上面相当于下面
+    // const obj = reactive(proxyRefs({ count }))
     // expect(obj.count).toBe(0)
   })
 })
