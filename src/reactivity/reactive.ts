@@ -30,7 +30,7 @@ function createReactive(obj: any, isShallow = false, isReadOnly = false) {
       }
 
       // 如果 key 的类型是 symbol 就不追踪，这是出于性能的考虑
-      if (!isReadOnly && typeof key === 'symbol') {
+      if (!isReadOnly && typeof key !== 'symbol') {
         track(target, key)
       }
 

@@ -7,8 +7,10 @@ let activeEffect: any
 const effectStack: any = []
 // 存储 对象 -> 属性 -> 副作用函数 的桶。
 const bucket = new WeakMap()
-// 拦截 for...in 循环所使用的枚举
+// 拦截 for...in 等循环的一些操作，用于链接副作用函数所使用的枚举
 export const ITERATE_KEY = Symbol()
+// 提供给 Map 类型绑定副作用函数的枚举
+export const MAP_KEY_ITERATE_KEY = Symbol()
 
 // 依赖收集
 export function track(target: any, key: any) {
@@ -76,8 +78,14 @@ export function trigger(target: any, key: any, type?: any, newVal?: any) {
     })
   }
 
-  // 只有操作是添加操作时，才触发相关的副作用函数
-  if (type === triggerType.ADD || type === triggerType.DELETE) {
+  // 只有操作是添加或删除操作时，才触发相关的副作用函数
+  if (
+    type === triggerType.ADD ||
+    type === triggerType.DELETE ||
+    // 因为 Map 类型在循环时，键和值都应该存在响应式，所以添加这个判断
+    (type === triggerType.SET &&
+      Object.prototype.toString.call(target) === '[object Map]')
+  ) {
     // 获取与枚举标识 ITERATE_KEY 相关的副作用函数
     const iterateEffects = depsMap.get(ITERATE_KEY)
     // 将与枚举标识 ITERATE_KEY 关联的副作用函数也取出添加到 effectsToRun 中
@@ -88,6 +96,21 @@ export function trigger(target: any, key: any, type?: any, newVal?: any) {
         }
       })
   }
+
+  // 当是删除和增加操作，并且是 Map 类型时，额外取出 Map 枚举所链接的副作用函数
+  if (
+    (type === triggerType.ADD || type === triggerType.DELETE) &&
+    Object.prototype.toString.call(target) === '[object Map]'
+  ) {
+    const iterateEffects = depsMap.get(MAP_KEY_ITERATE_KEY)
+    iterateEffects &&
+      iterateEffects.forEach((effectFn: any) => {
+        if (effectFn !== activeEffect) {
+          effectsToRun.add(effectFn)
+        }
+      })
+  }
+
   effectsToRun &&
     effectsToRun.forEach((effectFn: any) => {
       // 如果副作用函数存在调度器函数，则调用调度器，并将副作用函数作为参数传入

@@ -1,10 +1,19 @@
+import { triggerType } from '../shared/effect'
+import { track, trigger, ITERATE_KEY } from './effect'
+import { mutableInstrumentations } from '../shared/proxyMapAndSet'
+
 function createReactive(obj: any) {
   return new Proxy(obj, {
     get(target, key, receiver) {
+      if (key === 'raw') return target
       if (key === 'size') {
+        // 依赖收集
+        track(target, ITERATE_KEY)
         return Reflect.get(target, key, target)
       }
-      return target[key].bind(target)
+      // return target[key].bind(target)
+      // 执行对应的重写的方法
+      return mutableInstrumentations[key]
     },
   })
 }
