@@ -1,7 +1,11 @@
 /**
  * 创建渲染器
+ * @param options 包含的扩展配置,可以直接通过该参数去自定义配置，以达成不同的环境的需求。
  */
-export function createRenderer() {
+export function createRenderer(options: any) {
+  // 将传入的自定义方法取出
+  const { createElement, insert, setElementText } = options
+
   /**
    * 渲染 DOM 节点
    * @param vnode 虚拟节点
@@ -37,13 +41,14 @@ export function createRenderer() {
 
   // 挂载 element
   function mountElement(vnode: any, container: any) {
-    const el = document.createElement(vnode.type)
+    // 创建 element 对象
+    const el = createElement(vnode.type)
     if (typeof vnode.children === 'string') {
       // 如果 children 类型是 string ，说明是文字
-      el.textContent = vnode.children
+      setElementText(el, vnode.children)
     }
     // 将元素添加到容器中
-    container.appendChild(el)
+    insert(el, container)
   }
 
   return {
