@@ -39,6 +39,9 @@ function patchProps(el: any, key: any, prevValue: any, nextValue: any) {
       if (!invoker) {
         // 如果不存在 invoker 则创建一个
         invoker = el._vei = (e: any) => {
+          // e.timeStamp 是事件触发的时间
+          // 如果事件发生的事件遭遇事件处理函数绑的时间，则不执行事件处理函数
+          if (e.timeStamp < invoker.attached) return
           // invoker 内实际是调用 invoker.value
           // 而我们把 nextValue 就存在 invoker.value 中
           if (Array.isArray(invoker.value)) {
@@ -50,6 +53,8 @@ function patchProps(el: any, key: any, prevValue: any, nextValue: any) {
         }
         // 将事件存在 .value 中
         invoker.value = nextValue
+        // .attached 储存事件处理函数被绑定的时间
+        invoker.attached = performance.now()
         // 将该伪造事件添加为事件
         el.addEventListener(name, invoker)
       } else {
