@@ -41,7 +41,12 @@ function patchProps(el: any, key: any, prevValue: any, nextValue: any) {
         invoker = el._vei = (e: any) => {
           // invoker 内实际是调用 invoker.value
           // 而我们把 nextValue 就存在 invoker.value 中
-          invoker.value(e)
+          if (Array.isArray(invoker.value)) {
+            // 如果是一个数组，说明一个事件绑定了多个方法，依次循环执行
+            invoker.value.forEach((fn: any) => fn(e))
+          } else {
+            invoker.value(e)
+          }
         }
         // 将事件存在 .value 中
         invoker.value = nextValue
