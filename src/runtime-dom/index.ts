@@ -23,6 +23,14 @@ function unmount(vnode: any) {
     parent.removeChild(vnode.el)
   }
 }
+// 创建文本节点
+function createText(text: string) {
+  return document.createTextNode(text)
+}
+// 设置文本节点的内容
+function setText(el: any, text: string) {
+  el.nodeValue = text
+}
 
 // 处理元素 Attributes
 function patchProps(el: any, key: any, prevValue: any, nextValue: any) {
@@ -99,6 +107,8 @@ const renderer = createRenderer({
   insert,
   patchProps,
   unmount,
+  createText,
+  setText,
 })
 
 // 将设置好自定义方法配置的 renderer 实例封装，以提供给用户使用。

@@ -1,10 +1,23 @@
+// 文本节点的 vnode.type 标识
+const Text = Symbol()
+// 注释节点的 vnode.type 标识
+const Comment = Symbol()
+
 /**
  * 创建渲染器
  * @param options 包含的扩展配置,可以直接通过该参数去自定义配置，以达成不同的环境的需求。
  */
 export function createRenderer(options: any) {
   // 将传入的自定义方法取出
-  const { createElement, insert, setElementText, patchProps, unmount } = options
+  const {
+    createElement,
+    insert,
+    setElementText,
+    patchProps,
+    unmount,
+    createText,
+    setText,
+  } = options
 
   /**
    * 渲染 DOM 节点
@@ -50,6 +63,19 @@ export function createRenderer(options: any) {
       }
     } else if (typeof type === 'object') {
       // 如果是对象类型，则是组件
+    } else if (type === Text) {
+      // 文本节点
+      if (!n1) {
+        // 创建文本节点
+        const el = (n2.el = createText(n2.children))
+        insert(el, container)
+      } else {
+        const el = (n2.el = n1.el)
+        if (n2.children !== n1.children) {
+          // 替换文本
+          setText(el, n2.children)
+        }
+      }
     }
   }
 
