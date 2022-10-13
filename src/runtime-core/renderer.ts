@@ -53,7 +53,11 @@ export function createRenderer(options: any) {
     }
   }
 
-  // 挂载 element
+  /**
+   * 挂载 element
+   * @param vnode
+   * @param container
+   */
   function mountElement(vnode: any, container: any) {
     // 创建 element 对象,并将其与 vnode.el 关联
     const el = (vnode.el = createElement(vnode.type))
@@ -80,8 +84,81 @@ export function createRenderer(options: any) {
     insert(el, container)
   }
 
+  /**
+   * 更新 element 对象
+   * @param n1 旧 vnode
+   * @param n2 新 vnode
+   */
   function patchElement(n1: any, n2: any) {
-    // Implement
+    const el = (n2.el = n1.el)
+    const oldProps = n1.props
+    const newProps = n2.props
+
+    //#region 更新 props
+
+    for (const key in newProps) {
+      // 查看新的 Props 属性与旧的 Props 属性是否不同
+      if (newProps[key] !== oldProps[key]) {
+        // 不同则需要更新 props
+        patchProps(el, key, oldProps[key], newProps[key])
+      }
+    }
+
+    for (const key in oldProps) {
+      // 查看旧 Props 中的属性在新的 Props 内是否存在
+      if (!(key in newProps)) {
+        // 不存在说明新的 Props 已经删除了该属性，进行更新
+        patchProps(el, key, oldProps[key], null)
+      }
+    }
+
+    //#endregion
+
+    // 更新 children
+    patchChildren(n1, n2, el)
+  }
+
+  /**
+   * 更新 children
+   * @param n1 旧 vnode
+   * @param n2 新 vnode
+   * @param container 容器
+   */
+  function patchChildren(n1: any, n2: any, container: any) {
+    // 判断新子节点是否是文本
+    if (typeof n2.children === 'string') {
+      // 判断旧子节点是否为数组，如果是数组，则逐个卸载
+      if (Array.isArray(n1.children)) {
+        n1.children.forEach((c: any) => unmount(c))
+      }
+      // 设置文本
+      setElementText(container, n2.children)
+    }
+    // 新子节点是数组的情况
+    else if (Array.isArray(n2.children)) {
+      if (Array.isArray(n1.children)) {
+        // 新旧子节点都是数组，需要进行 diff 算法更新
+
+        // 先用一种傻瓜式的方法先实现功能，将旧子节点全卸载，再全加载子节点
+        n1.children.forEach((c: any) => unmount(c))
+        n2.children.forEach((c: any) => patch(null, c, container))
+      } else {
+        // 这种情况，容器要么是文本要么不存在
+        // 清空容器的子节点
+        setElementText(container, '')
+        // 将新 vnode 的子节点依次挂载
+        n2.children.forEach((c: any) => patch(null, c, container))
+      }
+    }
+    // 新子节点是空的情况
+    else {
+      // 卸载旧子节点即可
+      if (Array.isArray(n1.children)) {
+        n1.children.forEach((c: any) => unmount(c))
+      } else if (typeof n1.children === 'string') {
+        setElementText(container, '')
+      }
+    }
   }
 
   return {
