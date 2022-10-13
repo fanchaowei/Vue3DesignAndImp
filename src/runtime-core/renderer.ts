@@ -1,7 +1,9 @@
 // 文本节点的 vnode.type 标识
-const Text = Symbol()
+export const Text = Symbol()
 // 注释节点的 vnode.type 标识
-const Comment = Symbol()
+export const Comment = Symbol()
+// Fragment 的标识
+export const Fragment = Symbol()
 
 /**
  * 创建渲染器
@@ -75,6 +77,15 @@ export function createRenderer(options: any) {
           // 替换文本
           setText(el, n2.children)
         }
+      }
+    }
+    // 判断是否未 Fragment 节点
+    else if (type === Fragment) {
+      if (!n1) {
+        n2.children.forEach((c: any) => patch(null, c, container))
+      } else {
+        // 如果有旧 vnode ，则更新 children
+        patchChildren(n1, n2, container)
       }
     }
   }

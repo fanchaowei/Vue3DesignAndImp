@@ -1,4 +1,4 @@
-import { createRenderer } from '../runtime-core'
+import { createRenderer, Fragment } from '../runtime-core'
 
 // 创建 DOM 元素
 function createElement(tag: any) {
@@ -16,6 +16,12 @@ function insert(el: any, parent: any, auchor = null) {
 }
 // 卸载元素
 function unmount(vnode: any) {
+  if (vnode.type === Fragment) {
+    // Fragment 类型需要先依次卸载每个子节点
+    vnode.children.forEach((c: any) => {
+      unmount(c)
+    })
+  }
   // 获取元素的父级
   const parent = vnode.el.parentNode
   if (parent) {
