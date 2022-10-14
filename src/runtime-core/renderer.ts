@@ -46,7 +46,7 @@ export function createRenderer(options: any) {
    * @param n2 新 vnode
    * @param container 容器
    */
-  function patch(n1: any, n2: any, container: any) {
+  function patch(n1: any, n2: any, container: any = null) {
     // 先判断 n1 和 n2 是否一致，如果不一致则将 n1 先卸载
     if (n1 && n1.type !== n2.type) {
       unmount(n1)
@@ -176,9 +176,35 @@ export function createRenderer(options: any) {
       if (Array.isArray(n1.children)) {
         // 新旧子节点都是数组，需要进行 diff 算法更新
 
-        // 先用一种傻瓜式的方法先实现功能，将旧子节点全卸载，再全加载子节点
-        n1.children.forEach((c: any) => unmount(c))
-        n2.children.forEach((c: any) => patch(null, c, container))
+        const oldChildren = n1.children
+        const newChildren = n2.children
+        const oldLen = oldChildren.length
+        const newLen = newChildren.length
+
+        let lastIndex = 0 // 用于存储循环中遇到的最大索引值
+        // 遍历新 children ，每遍历依次就遍历旧 children 查找有没有 key 相同的节点
+        for (let i = 0; i < newLen; i++) {
+          const newVNode = newChildren[i]
+          for (let k = 0; k < oldLen; k++) {
+            const oldVNode = oldChildren[k]
+            if (newVNode.key === oldVNode.key) {
+              // 如果 key 相同，代表可以复用
+              // 但是即使是可以复用，内部的 children 可能不相同了，所以还需要 patch 更新
+              patch(oldVNode, newVNode, container)
+
+              if (k < lastIndex) {
+                // 如果当前找到的旧 children 的索引值小于 lastIndex，说明节点需要移动
+                // why? 因为外层循环新 children 的索引是越来越大的，如果不需要移动，那么旧 children 的索引值也应该越来越大，而不能小于 lastIndex
+              } else {
+                // 说明当前节点不需要移动
+                // 更新最大索引值
+                lastIndex = k
+              }
+
+              break
+            }
+          }
+        }
       } else {
         // 这种情况，容器要么是文本要么不存在
         // 清空容器的子节点
