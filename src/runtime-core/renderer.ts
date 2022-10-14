@@ -175,36 +175,7 @@ export function createRenderer(options: any) {
     else if (Array.isArray(n2.children)) {
       if (Array.isArray(n1.children)) {
         // 新旧子节点都是数组，需要进行 diff 算法更新
-
-        const oldChildren = n1.children
-        const newChildren = n2.children
-        const oldLen = oldChildren.length
-        const newLen = newChildren.length
-
-        let lastIndex = 0 // 用于存储循环中遇到的最大索引值
-        // 遍历新 children ，每遍历依次就遍历旧 children 查找有没有 key 相同的节点
-        for (let i = 0; i < newLen; i++) {
-          const newVNode = newChildren[i]
-          for (let k = 0; k < oldLen; k++) {
-            const oldVNode = oldChildren[k]
-            if (newVNode.key === oldVNode.key) {
-              // 如果 key 相同，代表可以复用
-              // 但是即使是可以复用，内部的 children 可能不相同了，所以还需要 patch 更新
-              patch(oldVNode, newVNode, container)
-
-              if (k < lastIndex) {
-                // 如果当前找到的旧 children 的索引值小于 lastIndex，说明节点需要移动
-                // why? 因为外层循环新 children 的索引是越来越大的，如果不需要移动，那么旧 children 的索引值也应该越来越大，而不能小于 lastIndex
-              } else {
-                // 说明当前节点不需要移动
-                // 更新最大索引值
-                lastIndex = k
-              }
-
-              break
-            }
-          }
-        }
+        patchArrayChildren(n1, n2, container)
       } else {
         // 这种情况，容器要么是文本要么不存在
         // 清空容器的子节点
@@ -220,6 +191,55 @@ export function createRenderer(options: any) {
         n1.children.forEach((c: any) => unmount(c))
       } else if (typeof n1.children === 'string') {
         setElementText(container, '')
+      }
+    }
+  }
+
+  /**
+   * diff 算法更新数组
+   * @param n1 旧 vnode
+   * @param n2 新 vnode
+   * @param container
+   */
+  function patchArrayChildren(n1: any, n2: any, container: any) {
+    const oldChildren = n1.children
+    const newChildren = n2.children
+    const oldLen = oldChildren.length
+    const newLen = newChildren.length
+
+    let lastIndex = 0 // 用于存储循环中遇到的最大索引值
+    // 遍历新 children ，每遍历依次就遍历旧 children 查找有没有 key 相同的节点
+    for (let i = 0; i < newLen; i++) {
+      const newVNode = newChildren[i]
+      for (let k = 0; k < oldLen; k++) {
+        const oldVNode = oldChildren[k]
+        if (newVNode.key === oldVNode.key) {
+          // 如果 key 相同，代表可以复用
+          // 但是即使是可以复用，内部的 children 可能不相同了，所以还需要 patch 更新
+          patch(oldVNode, newVNode, container)
+
+          if (k < lastIndex) {
+            // 如果当前找到的旧 children 的索引值小于 lastIndex，说明节点需要移动
+            // why? 因为外层循环新 children 的索引是越来越大的，如果不需要移动，那么旧 children 的索引值也应该越来越大，而不能小于 lastIndex
+
+            // 获取 newVNode 的前一个 vnode
+            const prevVNode = newChildren[i - 1]
+            // 如果 prevVNode 不存在，说明是第一个节点，不需要移动
+            if (prevVNode) {
+              // 我们要将 newVNode 的真实 DOM 移动到 prevNode 对应的真实 DOM 后面
+              // 所以我们获取 prevVNode 的真实 DOM 的下一个兄弟节点
+              const anchor = prevVNode.el.nextSibling
+              // 插入这个兄弟节点的前面，就相当于插入 prevNode 真实 DOM 节点的后面
+              insert(newVNode.el, container, anchor)
+            }
+          } else {
+            // 说明当前节点不需要移动
+            // 更新最大索引值
+            lastIndex = k
+          }
+
+          break
+        }
       }
     }
   }
