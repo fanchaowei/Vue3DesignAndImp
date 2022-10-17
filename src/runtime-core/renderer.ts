@@ -260,11 +260,11 @@ export function createRenderer(options: any) {
     }
 
     // 遍历旧 children ，目的是为了删除节点
-    for (let i = 0; i < oldLen.length; i++) {
+    for (let i = 0; i < oldLen; i++) {
       const oldVNode = oldChildren[i]
       // 在新 children 上查找是否存在相同 key 的节点
       const has = newChildren.find((vnode: any) => {
-        return vnode.key === oldVNode
+        return vnode.key === oldVNode.key
       })
       // 如果不存在则删除
       if (!has) {
