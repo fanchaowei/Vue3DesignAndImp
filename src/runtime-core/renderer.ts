@@ -46,7 +46,7 @@ export function createRenderer(options: any) {
    * @param n2 新 vnode
    * @param container 容器
    */
-  function patch(n1: any, n2: any, container: any = null, anchor: any) {
+  function patch(n1: any, n2: any, container: any, anchor: any) {
     // 先判断 n1 和 n2 是否一致，如果不一致则将 n1 先卸载
     if (n1 && n1.type !== n2.type) {
       unmount(n1)
@@ -175,7 +175,8 @@ export function createRenderer(options: any) {
     else if (Array.isArray(n2.children)) {
       if (Array.isArray(n1.children)) {
         // 新旧子节点都是数组，需要进行 diff 算法更新
-        patchArrayChildren(n1, n2, container)
+        // patchArrayChildren(n1, n2, container)
+        patchKeyedChildren(n1, n2, container)
       } else {
         // 这种情况，容器要么是文本要么不存在
         // 清空容器的子节点
@@ -196,7 +197,67 @@ export function createRenderer(options: any) {
   }
 
   /**
-   * diff 算法更新数组
+   * 双端 diff 算法
+   * @param n1
+   * @param n2
+   * @param container
+   */
+  function patchKeyedChildren(n1: any, n2: any, container: any) {
+    const oldChildren = n1.children
+    const newChildren = n2.children
+
+    let oldStartIdx = 0
+    let oldEndIdx = oldChildren.length - 1
+    let newStartIdx = 0
+    let newEndIdx = newChildren.length - 1
+
+    let oldStartVNode = oldChildren[oldStartIdx]
+    let oldEndVNode = oldChildren[oldEndIdx]
+    let newStartVNode = newChildren[newStartIdx]
+    let newEndVNode = newChildren[newEndIdx]
+
+    while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+      if (oldStartVNode.key === newStartVNode.key) {
+        // oldStartIdx 和 newStartIdx 比较
+
+        patch(oldStartVNode, newStartVNode, container, null)
+
+        oldStartVNode = oldChildren[++oldStartIdx]
+        newStartVNode = newChildren[++newStartIdx]
+      } else if (oldEndVNode.key === newStartVNode.key) {
+        // oldEndIdx 和 newStartIdx 比较
+
+        // 更新节点
+        patch(oldEndVNode, newStartVNode, container, null)
+        // 将 oldEndVNode 移动到 oldStartVNode 前面
+        // why？ 因为 newStartVNode 的位置对应就是 oldStartVNode
+        insert(oldEndVNode.el, container, oldStartVNode.el)
+
+        // 移动完后，两个标识各自往里移动一位
+        oldEndVNode = oldChildren[--oldEndIdx]
+        newStartVNode = newChildren[++newEndIdx]
+      } else if (oldStartVNode.key === newEndVNode.key) {
+        // oldStartIdx 和 newEndVNode 比较
+
+        patch(oldStartVNode, newEndVNode, container, null)
+        insert(oldStartVNode.el, container, oldEndVNode.el.nextSibling)
+
+        oldStartVNode = oldChildren[++oldStartIdx]
+        newEndVNode = newChildren[--newEndIdx]
+      } else if (oldEndVNode.key === newEndVNode.key) {
+        // oldEndIdx 和 newEndIdx 比较
+
+        // 由于都是最后一位，只需更新节点，无需移动
+        patch(oldEndVNode, newStartVNode, container, null)
+
+        oldEndVNode = oldChildren[--oldEndIdx]
+        newEndVNode = newChildren[--newEndIdx]
+      }
+    }
+  }
+
+  /**
+   * 简单 diff 算法更新数组
    * @param n1 旧 vnode
    * @param n2 新 vnode
    * @param container
