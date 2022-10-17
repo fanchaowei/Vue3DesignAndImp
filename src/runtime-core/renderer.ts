@@ -29,7 +29,7 @@ export function createRenderer(options: any) {
   function render(vnode: any, container: any) {
     if (vnode) {
       // 如果存在 vnode ，则将旧的 vnode 也传入进行更新
-      patch(container._vnode, vnode, container)
+      patch(container._vnode, vnode, container, null)
     } else {
       // 如果存在旧的不存在新的，说明是卸载
       if (container._vnode) {
@@ -46,7 +46,7 @@ export function createRenderer(options: any) {
    * @param n2 新 vnode
    * @param container 容器
    */
-  function patch(n1: any, n2: any, container: any = null) {
+  function patch(n1: any, n2: any, container: any = null, anchor: any) {
     // 先判断 n1 和 n2 是否一致，如果不一致则将 n1 先卸载
     if (n1 && n1.type !== n2.type) {
       unmount(n1)
@@ -58,7 +58,7 @@ export function createRenderer(options: any) {
       // string 说明是文本类型
       if (!n1) {
         // 不存在旧 vnode ，挂载操作
-        mountElement(n2, container)
+        mountElement(n2, container, anchor)
       } else {
         // 存在旧 vnode ，更新打补丁
         patchElement(n1, n2)
@@ -82,7 +82,7 @@ export function createRenderer(options: any) {
     // 判断是否未 Fragment 节点
     else if (type === Fragment) {
       if (!n1) {
-        n2.children.forEach((c: any) => patch(null, c, container))
+        n2.children.forEach((c: any) => patch(null, c, container, null))
       } else {
         // 如果有旧 vnode ，则更新 children
         patchChildren(n1, n2, container)
@@ -95,7 +95,7 @@ export function createRenderer(options: any) {
    * @param vnode
    * @param container
    */
-  function mountElement(vnode: any, container: any) {
+  function mountElement(vnode: any, container: any, anchor: any) {
     // 创建 element 对象,并将其与 vnode.el 关联
     const el = (vnode.el = createElement(vnode.type))
 
@@ -106,7 +106,7 @@ export function createRenderer(options: any) {
     } else if (Array.isArray(vnode.children)) {
       // 如果 children 是数组，则进行循环把每个子节点都进行挂载
       vnode.children.forEach((child: any) => {
-        patch(null, child, el)
+        patch(null, child, el, null)
       })
     }
 
@@ -118,7 +118,7 @@ export function createRenderer(options: any) {
     }
 
     // 将元素添加到容器中
-    insert(el, container)
+    insert(el, container, anchor)
   }
 
   /**
@@ -181,7 +181,7 @@ export function createRenderer(options: any) {
         // 清空容器的子节点
         setElementText(container, '')
         // 将新 vnode 的子节点依次挂载
-        n2.children.forEach((c: any) => patch(null, c, container))
+        n2.children.forEach((c: any) => patch(null, c, container, null))
       }
     }
     // 新子节点是空的情况
@@ -210,13 +210,16 @@ export function createRenderer(options: any) {
     let lastIndex = 0 // 用于存储循环中遇到的最大索引值
     // 遍历新 children ，每遍历依次就遍历旧 children 查找有没有 key 相同的节点
     for (let i = 0; i < newLen; i++) {
+      // 判断是否在旧 children 中找到可复用节点的标识
+      let find = false
       const newVNode = newChildren[i]
       for (let k = 0; k < oldLen; k++) {
         const oldVNode = oldChildren[k]
         if (newVNode.key === oldVNode.key) {
+          find = true
           // 如果 key 相同，代表可以复用
           // 但是即使是可以复用，内部的 children 可能不相同了，所以还需要 patch 更新
-          patch(oldVNode, newVNode, container)
+          patch(oldVNode, newVNode, container, null)
 
           if (k < lastIndex) {
             // 如果当前找到的旧 children 的索引值小于 lastIndex，说明节点需要移动
@@ -240,6 +243,32 @@ export function createRenderer(options: any) {
 
           break
         }
+      }
+      // 如果 find 为 false ，说明没有找到可复用节点，需要添加
+      if (!find) {
+        const prevVNode = newChildren[i - 1]
+        let anchor = null
+        if (prevVNode) {
+          // 同理找锚点进行插入
+          anchor = prevVNode.el.nextSibling
+        } else {
+          // 如果没有上一个节点，说明添加的是第一个子节点
+          anchor = container.firstChild
+        }
+        patch(null, newVNode, container, anchor)
+      }
+    }
+
+    // 遍历旧 children ，目的是为了删除节点
+    for (let i = 0; i < oldLen.length; i++) {
+      const oldVNode = oldChildren[i]
+      // 在新 children 上查找是否存在相同 key 的节点
+      const has = newChildren.find((vnode: any) => {
+        return vnode.key === oldVNode
+      })
+      // 如果不存在则删除
+      if (!has) {
+        unmount(oldVNode)
       }
     }
   }
