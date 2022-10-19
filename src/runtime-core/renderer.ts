@@ -217,7 +217,13 @@ export function createRenderer(options: any) {
     let newEndVNode = newChildren[newEndIdx]
 
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-      if (oldStartVNode.key === newStartVNode.key) {
+      if (!oldStartVNode) {
+        // 不存在则跳过
+        oldStartVNode = oldChildren[++oldStartIdx]
+      } else if (!oldEndVNode) {
+        // 不存在则跳过
+        oldEndVNode = oldChildren[--oldEndIdx]
+      } else if (oldStartVNode.key === newStartVNode.key) {
         // oldStartIdx 和 newStartIdx 比较
 
         patch(oldStartVNode, newStartVNode, container, null)
@@ -235,7 +241,7 @@ export function createRenderer(options: any) {
 
         // 移动完后，两个标识各自往里移动一位
         oldEndVNode = oldChildren[--oldEndIdx]
-        newStartVNode = newChildren[++newEndIdx]
+        newStartVNode = newChildren[++newStartIdx]
       } else if (oldStartVNode.key === newEndVNode.key) {
         // oldStartIdx 和 newEndVNode 比较
 
@@ -252,6 +258,26 @@ export function createRenderer(options: any) {
 
         oldEndVNode = oldChildren[--oldEndIdx]
         newEndVNode = newChildren[--newEndIdx]
+      } else {
+        // 四次比较未发现复用的时候，进行的特殊处理
+
+        // 查找 newStartVNode 在旧 children 内是否存在复用，并输出对应的索引值
+        const idxInOld = oldChildren.findIndex((node: any) => {
+          return node.key === newStartVNode.key
+        })
+        // 是否存在复用
+        if (idxInOld > 0) {
+          // 获取到需要移动的旧节点
+          const vnodeToMove = oldChildren[idxInOld]
+          // 更新节点
+          patch(vnodeToMove, newStartVNode, container, null)
+          // 将就节点插入到最前面
+          insert(vnodeToMove.el, container, oldStartVNode.el)
+          // 因为真实 DOM 已经移动了不在原位，所以虚拟节点也需要取消掉
+          oldChildren[idxInOld] = undefined
+          // 更新 newStartIdx
+          newStartVNode = newChildren[++newStartIdx]
+        }
       }
     }
   }
