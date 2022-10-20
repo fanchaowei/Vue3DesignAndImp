@@ -197,12 +197,68 @@ export function createRenderer(options: any) {
   }
 
   /**
-   * 双端 diff 算法
+   * 快速 diff 算法
    * @param n1
    * @param n2
    * @param container
    */
   function patchKeyedChildren(n1: any, n2: any, container: any) {
+    const newChildren = n2.children
+    const oldChildren = n1.children
+    // 索引 j 为前置节点标识，指向新旧 children 的头部
+    let j = 0
+    let oldVNode = oldChildren[j]
+    let newVNode = newChildren[j]
+    // 向后循环查找，直到找到 key 不同的节点位置，这时完成了前置节点的更新
+    while (oldVNode.key === newVNode.key) {
+      patch(oldVNode, newVNode, container, null)
+      j++
+      oldVNode = oldChildren[j]
+      newVNode = newChildren[j]
+    }
+
+    // 获取新旧 children 最后一位的位置，作为后置节点标识
+    let oldEnd = oldChildren.length - 1
+    let newEnd = newChildren.length - 1
+
+    oldVNode = oldChildren[oldEnd]
+    newVNode = newChildren[newEnd]
+    // 向前循环，直到找到 key 不同的节点位置，这时完成了后置节点的更新
+    while (oldVNode.key === newVNode.key) {
+      patch(oldVNode, newVNode, container, null)
+
+      oldEnd--
+      newEnd--
+      oldVNode = oldChildren[oldEnd]
+      newVNode = newChildren[newEnd]
+    }
+
+    // 满足这个条件的，说明 j->newEnd 之间的节点应作为新节点插入
+    if (j > oldEnd && j <= newEnd) {
+      // 获取锚点
+      const anchorIndex = newEnd + 1
+      const anchor =
+        newChildren.length > anchorIndex ? newChildren[anchorIndex] : null
+      while (j <= newEnd) {
+        // 循环插入
+        patch(null, newChildren[j++], container, anchor)
+      }
+    }
+    // 满足这个条件的则为 j->oldEnd 之间的旧节点需要卸载
+    else if (j > newEnd && j <= oldEnd) {
+      while (j <= oldEnd) {
+        unmount(oldChildren[j++])
+      }
+    }
+  }
+
+  /**
+   * 双端 diff 算法
+   * @param n1
+   * @param n2
+   * @param container
+   */
+  function patchKeyedChildren_1(n1: any, n2: any, container: any) {
     const oldChildren = n1.children
     const newChildren = n2.children
 
@@ -292,6 +348,12 @@ export function createRenderer(options: any) {
       for (let i = newStartIdx; i <= newEndIdx; i++) {
         // 循环添加新节点
         patch(null, newChildren[i], container, oldStartVNode.el)
+      }
+    }
+    // 移除旧节点
+    else if (newEndIdx < newStartIdx && oldStartIdx <= oldEndIdx) {
+      for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+        unmount(oldChildren[i])
       }
     }
   }
