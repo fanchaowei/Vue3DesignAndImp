@@ -218,10 +218,10 @@ export function createRenderer(options: any) {
 
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
       if (!oldStartVNode) {
-        // 不存在则跳过
+        // 不存在说明已处理，跳过
         oldStartVNode = oldChildren[++oldStartIdx]
       } else if (!oldEndVNode) {
-        // 不存在则跳过
+        // 不存在说明已处理，跳过
         oldEndVNode = oldChildren[--oldEndIdx]
       } else if (oldStartVNode.key === newStartVNode.key) {
         // oldStartIdx 和 newStartIdx 比较
@@ -275,9 +275,23 @@ export function createRenderer(options: any) {
           insert(vnodeToMove.el, container, oldStartVNode.el)
           // 因为真实 DOM 已经移动了不在原位，所以虚拟节点也需要取消掉
           oldChildren[idxInOld] = undefined
-          // 更新 newStartIdx
-          newStartVNode = newChildren[++newStartIdx]
+        } else {
+          // 如果不存在复用，那说明 newStartVNode 是新增的头部节点
+          patch(null, newStartVNode, container, oldStartVNode.el)
         }
+        // 更新 newStartIdx
+        newStartVNode = newChildren[++newStartIdx]
+      }
+    }
+
+    // 这里是为了处理特殊原因：循环结束了，但是新增的节点却还未处理。
+    // 例子：
+    // 旧 children ： 1 2 3
+    // 新 children ： 4 1 2 3
+    if (oldEndIdx < oldStartIdx && newStartIdx <= newEndIdx) {
+      for (let i = newStartIdx; i <= newEndIdx; i++) {
+        // 循环添加新节点
+        patch(null, newChildren[i], container, oldStartVNode.el)
       }
     }
   }
