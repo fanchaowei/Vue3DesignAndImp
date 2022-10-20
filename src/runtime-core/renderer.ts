@@ -238,7 +238,7 @@ export function createRenderer(options: any) {
       // 获取锚点
       const anchorIndex = newEnd + 1
       const anchor =
-        newChildren.length > anchorIndex ? newChildren[anchorIndex] : null
+        newChildren.length > anchorIndex ? newChildren[anchorIndex].el : null
       while (j <= newEnd) {
         // 循环插入
         patch(null, newChildren[j++], container, anchor)
