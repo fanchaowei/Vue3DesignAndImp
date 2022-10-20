@@ -230,6 +230,22 @@ export function createRenderer(options: any) {
 
         oldStartVNode = oldChildren[++oldStartIdx]
         newStartVNode = newChildren[++newStartIdx]
+      } else if (oldEndVNode.key === newEndVNode.key) {
+        // oldEndIdx 和 newEndIdx 比较
+
+        // 由于都是最后一位，只需更新节点，无需移动
+        patch(oldEndVNode, newEndVNode, container, null)
+
+        oldEndVNode = oldChildren[--oldEndIdx]
+        newEndVNode = newChildren[--newEndIdx]
+      } else if (oldStartVNode.key === newEndVNode.key) {
+        // oldStartIdx 和 newEndVNode 比较
+
+        patch(oldStartVNode, newEndVNode, container, null)
+        insert(oldStartVNode.el, container, oldEndVNode.el.nextSibling)
+
+        oldStartVNode = oldChildren[++oldStartIdx]
+        newEndVNode = newChildren[--newEndIdx]
       } else if (oldEndVNode.key === newStartVNode.key) {
         // oldEndIdx 和 newStartIdx 比较
 
@@ -242,22 +258,6 @@ export function createRenderer(options: any) {
         // 移动完后，两个标识各自往里移动一位
         oldEndVNode = oldChildren[--oldEndIdx]
         newStartVNode = newChildren[++newStartIdx]
-      } else if (oldStartVNode.key === newEndVNode.key) {
-        // oldStartIdx 和 newEndVNode 比较
-
-        patch(oldStartVNode, newEndVNode, container, null)
-        insert(oldStartVNode.el, container, oldEndVNode.el.nextSibling)
-
-        oldStartVNode = oldChildren[++oldStartIdx]
-        newEndVNode = newChildren[--newEndIdx]
-      } else if (oldEndVNode.key === newEndVNode.key) {
-        // oldEndIdx 和 newEndIdx 比较
-
-        // 由于都是最后一位，只需更新节点，无需移动
-        patch(oldEndVNode, newStartVNode, container, null)
-
-        oldEndVNode = oldChildren[--oldEndIdx]
-        newEndVNode = newChildren[--newEndIdx]
       } else {
         // 四次比较未发现复用的时候，进行的特殊处理
 
