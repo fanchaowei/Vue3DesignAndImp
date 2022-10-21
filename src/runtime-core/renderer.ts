@@ -252,6 +252,7 @@ export function createRenderer(options: any) {
     }
     // 处理非理想状况
     else {
+      // 计算出需要处理的区间长度
       const count = newEnd - j + 1
       // 用于存储新的一组子节点中的节点在旧的一组子节点中的位置索引，用于后续计算最长递增子序列
       const source = new Array(count)
@@ -288,7 +289,6 @@ export function createRenderer(options: any) {
             // 判断是否需要移动
             if (k < pos) {
               // 需要移动
-
               moved = true
             } else {
               pos = k
@@ -296,6 +296,47 @@ export function createRenderer(options: any) {
           } else {
             // 没找到则卸载
             unmount(oldVNode)
+          }
+        }
+      }
+
+      // 如果 moved 为 true ，说明需要移动位置
+      if (moved) {
+        // 获得最长递增子序列
+        const seq = lis(source)
+
+        // s 指向最长递增子序列的最后一个元素
+        let s = seq.length - 1
+        // i 指向 newChildren 需要处理的区间内的数组的最后一个元素
+        let i = count - 1
+        for (i; i >= 0; i--) {
+          if (source[i] === -1) {
+            // source[i] 为 -1 说明需要新增
+
+            // 获取需要新增的 vnode
+            const pos = i + newStart
+            const newVNode = newChildren[pos]
+            // 获取锚点
+            const nextPos = pos + 1
+            const anchor =
+              nextPos < newChildren.length ? newChildren[nextPos].el : null
+            // 挂载
+            patch(null, newVNode, container, anchor)
+          } else if (seq[s] !== i) {
+            // 不相等说明需要移动
+
+            // 获取需要移动的 vnode
+            const pos = i + newStart
+            const newVNode = newChildren[pos]
+            // 获取锚点
+            const nextPos = pos + 1
+            const anchor =
+              nextPos < newChildren.length ? newChildren[nextPos].el : null
+            // 移动
+            insert(newVNode.el, container, anchor)
+          } else {
+            // 相等则是找到了对应的无需移动的 vnode ，s 向前走一位。
+            s--
           }
         }
       }
@@ -489,4 +530,53 @@ export function createRenderer(options: any) {
   return {
     render,
   }
+}
+
+/**
+ * 最长递增子序列(不考察但是需要理解该算法在 diff 算法的作用)
+ * 通过传入的数组，输出正向排布的不需要变动位置的数组
+ * 例如：[2, 3, 0, 5, 6, 9] -> [ 0, 1, 3, 4, 5 ]
+ * 上面例子代表：原数组的第 0, 1, 3, 4, 5 位是正向增长的，无需移动位置
+ * @param arr
+ * @returns
+ */
+function lis(arr: any) {
+  const p = arr.slice()
+  const result = [0]
+  let i, j, u, v, c
+  const len = arr.length
+  for (i = 0; i < len; i++) {
+    const arrI = arr[i]
+    if (arrI !== 0) {
+      j = result[result.length - 1]
+      if (arr[j] < arrI) {
+        p[i] = j
+        result.push(i)
+        continue
+      }
+      u = 0
+      v = result.length - 1
+      while (u < v) {
+        c = (u + v) >> 1
+        if (arr[result[c]] < arrI) {
+          u = c + 1
+        } else {
+          v = c
+        }
+      }
+      if (arrI < arr[result[u]]) {
+        if (u > 0) {
+          p[i] = result[u - 1]
+        }
+        result[u] = i
+      }
+    }
+  }
+  u = result.length
+  v = result[u - 1]
+  while (u-- > 0) {
+    result[u] = v
+    v = p[v]
+  }
+  return result
 }
