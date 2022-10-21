@@ -250,6 +250,56 @@ export function createRenderer(options: any) {
         unmount(oldChildren[j++])
       }
     }
+    // 处理非理想状况
+    else {
+      const count = newEnd - j + 1
+      // 用于存储新的一组子节点中的节点在旧的一组子节点中的位置索引，用于后续计算最长递增子序列
+      const source = new Array(count)
+      source.fill(-1)
+
+      const oldStart = j
+      const newStart = j
+      // 索引表，key 为新节点的 key。 value 为对应 key 在新 children 数组内的索引
+      const keyIndex: any = {}
+      for (let i = newStart; i <= newEnd; i++) {
+        keyIndex[newChildren[i].key] = i
+      }
+      // 是否需要移动的标识
+      let moved = false
+      // 与简单 diff 算法一样，循环中出现的最大的索引值
+      let pos = 0
+      // 代表循环中已经处理了节点，避免处理超出
+      let patched = 0
+      // 遍历旧的一组子节点中剩余未处理的节点
+      for (let i = oldStart; i <= oldEnd; i++) {
+        oldVNode = oldChildren[i]
+
+        // 已更新节点的数量是否超出需要更新的数量
+        if (patched <= count) {
+          // 通过 key 在索引表内反查找 newChildren 的索引
+          const k = keyIndex[oldVNode.key]
+
+          if (typeof k !== undefined) {
+            // 如果存在，则更新节点
+            newVNode = newChildren[k]
+            patch(oldVNode, newVNode, container, null)
+            // 存入数组
+            source[k - newStart] = i
+            // 判断是否需要移动
+            if (k < pos) {
+              // 需要移动
+
+              moved = true
+            } else {
+              pos = k
+            }
+          } else {
+            // 没找到则卸载
+            unmount(oldVNode)
+          }
+        }
+      }
+    }
   }
 
   /**
