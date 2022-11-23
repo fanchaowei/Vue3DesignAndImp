@@ -63,8 +63,6 @@ export function createRenderer(options: any) {
         // 存在旧 vnode ，更新打补丁
         patchElement(n1, n2)
       }
-    } else if (typeof type === 'object') {
-      // 如果是对象类型，则是组件
     } else if (type === Text) {
       // 文本节点
       if (!n1) {
@@ -79,7 +77,7 @@ export function createRenderer(options: any) {
         }
       }
     }
-    // 判断是否未 Fragment 节点
+    // 处理 Fragment 节点
     else if (type === Fragment) {
       if (!n1) {
         n2.children.forEach((c: any) => patch(null, c, container, null))
@@ -88,7 +86,32 @@ export function createRenderer(options: any) {
         patchChildren(n1, n2, container)
       }
     }
+    // 处理 Component 组件
+    else if (typeof type === 'object') {
+      if (!n1) {
+        // 挂载组件
+        mountComponent(n2, container, anchor)
+      } else {
+        // 更新组件
+        patchComponent(n1, n2, container)
+      }
+    }
   }
+
+  // 挂载组件
+  function mountComponent(vnode: any, container: any, anchor: any) {
+    // 从 vnode 中获取组件
+    const componentOptions = vnode.type
+    // 获取组件的渲染函数 render
+    const { render } = componentOptions
+    // 执行渲染函数，获取组件要渲染的内容。即 render 函数返回的虚拟 DOM
+    const subTree = render()
+    // 最后调用 patch 函数来挂载组件所描述的内容
+    patch(null, subTree, container, anchor)
+  }
+
+  // 更新组件
+  function patchComponent(n1: any, n2: any, container: any) {}
 
   /**
    * 挂载 element
