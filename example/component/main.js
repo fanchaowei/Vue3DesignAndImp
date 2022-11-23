@@ -1,5 +1,6 @@
 import { createApp } from '../../lib/vue3-design-and-imp.esm.js'
 
+// 组件
 const MyComponent = {
   name: 'MyComponent',
   render() {
@@ -10,6 +11,7 @@ const MyComponent = {
     }
   },
 }
+// 组件的虚拟节点
 const CompVNode = {
   type: MyComponent,
 }
