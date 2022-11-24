@@ -1,3 +1,6 @@
+import { effect, reactive } from '../reactivity'
+import queueJob from '../util/jobQueue'
+
 // 文本节点的 vnode.type 标识
 export const Text = Symbol()
 // 注释节点的 vnode.type 标识
@@ -102,12 +105,22 @@ export function createRenderer(options: any) {
   function mountComponent(vnode: any, container: any, anchor: any) {
     // 从 vnode 中获取组件
     const componentOptions = vnode.type
-    // 获取组件的渲染函数 render
-    const { render } = componentOptions
-    // 执行渲染函数，获取组件要渲染的内容。即 render 函数返回的虚拟 DOM
-    const subTree = render()
-    // 最后调用 patch 函数来挂载组件所描述的内容
-    patch(null, subTree, container, anchor)
+    // 获取组件的渲染函数 render, 与组件数据 data
+    const { render, data } = componentOptions
+    // 将组件数据 data 包装成响应式数据
+    const state = reactive(data())
+
+    effect(
+      () => {
+        // 执行渲染函数，获取组件要渲染的内容。即 render 函数返回的虚拟 DOM
+        const subTree = render.call(state, state)
+        // 最后调用 patch 函数来挂载组件所描述的内容
+        patch(null, subTree, container, anchor)
+      },
+      {
+        scheduler: queueJob,
+      }
+    )
   }
 
   // 更新组件
