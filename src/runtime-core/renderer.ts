@@ -105,19 +105,69 @@ export function createRenderer(options: any) {
   function mountComponent(vnode: any, container: any, anchor: any) {
     // 从 vnode 中获取组件
     const componentOptions = vnode.type
-    // 获取组件的渲染函数 render, 与组件数据 data
-    const { render, data } = componentOptions
+
+    // 获取组件的渲染函数 render, 与组件数据 data, 和生命周期等
+    const {
+      render,
+      data,
+      beforeCreate,
+      created,
+      beforeMount,
+      mounted,
+      beforeUpdate,
+      updated,
+    } = componentOptions
+
+    // 执行 beforeCreate 钩子
+    beforeCreate && beforeCreate()
+
     // 将组件数据 data 包装成响应式数据
     const state = reactive(data())
+
+    // 定义组件实例，一个组件实例本质上就是一个对象，它包含与组件相关的状态信息
+    const instance = {
+      // 组件自身的状态数据，即 data
+      state,
+      // 一个布尔值标识，用于判断是否已经挂载
+      isMounted: false,
+      // 组件所渲染的内容，即子树(subTree)
+      subTree: null,
+    }
+
+    // 在这里调用 created 钩子
+    created && created.call(state)
+
+    // 将组件实例挂载到 vnode 上，用于后续更新
+    vnode.component = instance
 
     effect(
       () => {
         // 执行渲染函数，获取组件要渲染的内容。即 render 函数返回的虚拟 DOM
         const subTree = render.call(state, state)
-        // 最后调用 patch 函数来挂载组件所描述的内容
-        patch(null, subTree, container, anchor)
+
+        // 检查组件是否已经被挂载
+        if (instance.isMounted) {
+          // 在这里调用 beforeMount 钩子
+          beforeMount && beforeMount.call(state)
+          // 初次挂载，patch 第一个参数传 null
+          patch(null, subTree, container, anchor)
+          // 将 isMounted 改为 true，这样就不会再执行挂载操作了
+          instance.isMounted = true
+          // 在这里调用 mounted 钩子
+          mounted && mounted.call(state)
+        } else {
+          // 调用 beforeUpdate 钩子
+          beforeUpdate && beforeUpdate.call(state)
+          // 如果是更新，则从组件实例中取出旧的 subTree，与新的 subTree 一起进行更新打补丁。
+          patch(instance.subTree, subTree, container, anchor)
+          // 调用 updated 钩子
+          updated && updated.call(state)
+        }
+        // 更新组件实例的子树 subTree
+        instance.subTree = subTree
       },
       {
+        // 用于将更新放在微任务队列中
         scheduler: queueJob,
       }
     )

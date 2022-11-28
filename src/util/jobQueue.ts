@@ -9,6 +9,7 @@ export default function queueJob(job: any) {
   queue.add(job)
   if (!isFlush) {
     isFlush = true
+    // 将任务队列的执行推入到微任务队列内
     p.then(() => {
       try {
         queue.forEach((job: any) => job())
