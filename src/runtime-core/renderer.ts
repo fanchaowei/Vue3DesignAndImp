@@ -1,4 +1,4 @@
-import { effect, reactive } from '../reactivity'
+import { effect, reactive, shallowReactive } from '../reactivity'
 import queueJob from '../util/jobQueue'
 
 // 文本节点的 vnode.type 标识
@@ -116,6 +116,7 @@ export function createRenderer(options: any) {
       mounted,
       beforeUpdate,
       updated,
+      props: propsOption,
     } = componentOptions
 
     // 执行 beforeCreate 钩子
@@ -123,45 +124,75 @@ export function createRenderer(options: any) {
 
     // 将组件数据 data 包装成响应式数据
     const state = reactive(data())
+    // 调用 resolve 函数解析出最终的 props 数据与 attrs 数据
+    const [props, attrs] = resolveProps(propsOption, vnode.props)
 
     // 定义组件实例，一个组件实例本质上就是一个对象，它包含与组件相关的状态信息
     const instance = {
       // 组件自身的状态数据，即 data
       state,
+      // 将解析处的 props 包装为 shallowReactive 并定义到组件实例上
+      props: shallowReactive(props),
       // 一个布尔值标识，用于判断是否已经挂载
       isMounted: false,
       // 组件所渲染的内容，即子树(subTree)
       subTree: null,
     }
 
-    // 在这里调用 created 钩子
-    created && created.call(state)
-
     // 将组件实例挂载到 vnode 上，用于后续更新
     vnode.component = instance
+
+    // 创建渲染上下文对象，本质上是组件实例的处理
+    const renderContext = new Proxy(instance, {
+      get(t, k, r) {
+        const { state, props } = t
+        // 查看 k 存在在 state 还是 props 上，并对应返回
+        if (state && k in state) {
+          return state[k]
+        } else if (k in props) {
+          return props[k]
+        } else {
+          console.error('不存在')
+        }
+      },
+      set(t, k: any, v, r) {
+        const { state, props } = t
+        if (state && k in state) {
+          state[k] = v
+        } else if (k in props) {
+          console.warn(`Attempting to mutate prop "${k}". Props are readonly.`)
+        } else {
+          console.error('不存在')
+        }
+        return true
+      },
+    })
+
+    // 在这里调用 created 钩子
+    created && created.call(renderContext)
 
     effect(
       () => {
         // 执行渲染函数，获取组件要渲染的内容。即 render 函数返回的虚拟 DOM
-        const subTree = render.call(state, state)
+        const subTree = render.call(renderContext, renderContext)
 
         // 检查组件是否已经被挂载
         if (instance.isMounted) {
           // 在这里调用 beforeMount 钩子
-          beforeMount && beforeMount.call(state)
+          beforeMount && beforeMount.call(renderContext)
           // 初次挂载，patch 第一个参数传 null
           patch(null, subTree, container, anchor)
           // 将 isMounted 改为 true，这样就不会再执行挂载操作了
           instance.isMounted = true
           // 在这里调用 mounted 钩子
-          mounted && mounted.call(state)
+          mounted && mounted.call(renderContext)
         } else {
           // 调用 beforeUpdate 钩子
-          beforeUpdate && beforeUpdate.call(state)
+          beforeUpdate && beforeUpdate.call(renderContext)
           // 如果是更新，则从组件实例中取出旧的 subTree，与新的 subTree 一起进行更新打补丁。
           patch(instance.subTree, subTree, container, anchor)
           // 调用 updated 钩子
-          updated && updated.call(state)
+          updated && updated.call(renderContext)
         }
         // 更新组件实例的子树 subTree
         instance.subTree = subTree
@@ -173,8 +204,61 @@ export function createRenderer(options: any) {
     )
   }
 
+  // 用于解析组件的 props 和 attrs
+  function resolveProps(options: any, propsData: any): [any, any] {
+    const props: any = {}
+    const attrs: any = {}
+
+    // 遍历组件传递的 props 数据
+    for (const key in propsData) {
+      if (key in options) {
+        // 如果为组件传递的 props 数据在组件自身的 props 选项中有定义，则将其视为合法的 props
+        props[key] = propsData[key]
+      } else {
+        // 否则将其视为 attrs
+        attrs[key] = propsData[key]
+      }
+    }
+    return [props, attrs]
+  }
+
   // 更新组件
-  function patchComponent(n1: any, n2: any, container: any) {}
+  function patchComponent(n1: any, n2: any, container: any) {
+    // 获取组件实例，即 n1.component，同时让新的组件虚拟节点 n2.component 也指向组件实例
+    const instance = (n2.component = n1.component)
+    // 获取当前的 props 数据
+    const { props } = instance
+    // 调用 hasPropsChanged 检测为子组件传递的 props 是否发生变化，如果没有变化，则不需要更新
+    if (hasPropsChanged(n1.props, n2.props)) {
+      // 调用 resolveProps 函数重新获取 props 数据
+      const [nextProps] = resolveProps(n2.type.props, n2.props)
+      // 更新 props
+      for (const k in nextProps) {
+        props[k] = nextProps[k]
+      }
+      // 删除不存在的 props
+      for (const k in props) {
+        if (!(k in nextProps)) {
+          delete props[k]
+        }
+      }
+    }
+  }
+
+  // 判断子组件传递的 props 是否发生变化
+  function hasPropsChanged(prevProps: any, nextProps: any) {
+    const nextKeys = Object.keys(nextProps)
+    // 先简单的判断，新旧 props 长度是否不同，不同则说明发生了变化
+    if (nextKeys.length !== Object.keys(prevProps).length) {
+      return true
+    }
+    for (let i = 0; i < nextKeys.length; i++) {
+      // 循环每个 key ，将新旧 props 进行判断
+      const key = nextKeys[i]
+      if (nextProps[key] !== prevProps[key]) return true
+    }
+    return false
+  }
 
   /**
    * 挂载 element

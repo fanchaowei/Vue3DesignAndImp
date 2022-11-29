@@ -21,10 +21,13 @@ const MyComponent = {
       foo: 'hello world',
     }
   },
+  props: {
+    title: String,
+  },
   render() {
     return {
       type: 'div',
-      children: `foo 的值是：${this.foo}`,
+      children: `foo 的值是：${this.foo}. title is ${this.title}`,
     }
   },
 }
@@ -32,6 +35,10 @@ const MyComponent = {
 // 组件的虚拟节点
 const CompVNode = {
   type: MyComponent,
+  props: {
+    title: 'a big title',
+    other: this.val,
+  },
 }
 
 createApp(CompVNode, document.querySelector('#app'))
