@@ -37,7 +37,6 @@ const CompVNode = {
   type: MyComponent,
   props: {
     title: 'a big title',
-    other: this.val,
   },
 }
 

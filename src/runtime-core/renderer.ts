@@ -1,4 +1,9 @@
-import { effect, reactive, shallowReactive } from '../reactivity'
+import {
+  effect,
+  reactive,
+  shallowReactive,
+  shallowReadOnly,
+} from '../reactivity'
 import queueJob from '../util/jobQueue'
 
 // 文本节点的 vnode.type 标识
@@ -107,7 +112,7 @@ export function createRenderer(options: any) {
     const componentOptions = vnode.type
 
     // 获取组件的渲染函数 render, 与组件数据 data, 和生命周期等
-    const {
+    let {
       render,
       data,
       beforeCreate,
@@ -117,13 +122,14 @@ export function createRenderer(options: any) {
       beforeUpdate,
       updated,
       props: propsOption,
+      setup,
     } = componentOptions
 
     // 执行 beforeCreate 钩子
     beforeCreate && beforeCreate()
 
     // 将组件数据 data 包装成响应式数据
-    const state = reactive(data())
+    const state = data ? reactive(data()) : null
     // 调用 resolve 函数解析出最终的 props 数据与 attrs 数据
     const [props, attrs] = resolveProps(propsOption, vnode.props)
 
@@ -139,6 +145,23 @@ export function createRenderer(options: any) {
       subTree: null,
     }
 
+    // 传入  setup 的第二个参数，目前只有 attrs
+    const setupContext = { attrs }
+    // 调用 setup 函数，获得返回值
+    const setupResult = setup(shallowReadOnly(instance.props), setupContext)
+    // 用来存储 setup 返回的数据
+    let setupState: any = null
+
+    if (typeof setupResult === 'function') {
+      if (render) {
+        // setup 函数代表渲染函数，但又存在 render ，发生冲突
+        console.error(`setup 函数返回渲染函数， render 选项将被忽略`)
+        render = setupResult
+      }
+    } else {
+      setupState = setupResult
+    }
+
     // 将组件实例挂载到 vnode 上，用于后续更新
     vnode.component = instance
 
@@ -151,6 +174,8 @@ export function createRenderer(options: any) {
           return state[k]
         } else if (k in props) {
           return props[k]
+        } else if (setupState && k in setupState) {
+          return setupState[k].__v_isRef ? setupState[k].value : setupState[k]
         } else {
           console.error('不存在')
         }
@@ -161,6 +186,13 @@ export function createRenderer(options: any) {
           state[k] = v
         } else if (k in props) {
           console.warn(`Attempting to mutate prop "${k}". Props are readonly.`)
+        } else if (setupState && k in setupState) {
+          // 支持对 setup 暴露的属性的修改
+          if (setupState[k].__v_isRef) {
+            setupState[k].value = v
+          } else {
+            setupState[k] = v
+          }
         } else {
           console.error('不存在')
         }
