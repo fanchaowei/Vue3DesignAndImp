@@ -145,8 +145,24 @@ export function createRenderer(options: any) {
       subTree: null,
     }
 
-    // 传入  setup 的第二个参数，目前只有 attrs
-    const setupContext = { attrs }
+    // 定义 emit 函数
+    // event: 事件名称
+    // payload: 传递给事件处理函数的参数
+    const emit = (event: any, ...payload: any) => {
+      // 按照约定的对事件的命名进行处理，例如：change => onChange
+      const eventName = `on${event[0].toUpperCase() + event.slice(1)}`
+      // 在 props 内查找是否存在该名称的事件
+      const handler = instance.props[eventName]
+      if (handler) {
+        // 调用时间处理函数并传递参数
+        handler(...payload)
+      } else {
+        console.error('事件不存在')
+      }
+    }
+
+    // 传入  setup 的第二个参数
+    const setupContext = { attrs, emit }
     // 调用 setup 函数，获得返回值
     const setupResult = setup(shallowReadOnly(instance.props), setupContext)
     // 用来存储 setup 返回的数据
@@ -243,12 +259,18 @@ export function createRenderer(options: any) {
 
     // 遍历组件传递的 props 数据
     for (const key in propsData) {
-      if (key in options) {
-        // 如果为组件传递的 props 数据在组件自身的 props 选项中有定义，则将其视为合法的 props
+      if (options) {
+        if (key in options) {
+          // 如果为组件传递的 props 数据在组件自身的 props 选项中有定义，则将其视为合法的 props
+          props[key] = propsData[key]
+        } else {
+          // 否则将其视为 attrs
+          attrs[key] = propsData[key]
+        }
+      }
+      if (key.startsWith('on')) {
+        // 以 on 打头的数据也都会存入 props 中
         props[key] = propsData[key]
-      } else {
-        // 否则将其视为 attrs
-        attrs[key] = propsData[key]
       }
     }
     return [props, attrs]
