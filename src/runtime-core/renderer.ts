@@ -133,18 +133,6 @@ export function createRenderer(options: any) {
     // 调用 resolve 函数解析出最终的 props 数据与 attrs 数据
     const [props, attrs] = resolveProps(propsOption, vnode.props)
 
-    // 定义组件实例，一个组件实例本质上就是一个对象，它包含与组件相关的状态信息
-    const instance = {
-      // 组件自身的状态数据，即 data
-      state,
-      // 将解析处的 props 包装为 shallowReactive 并定义到组件实例上
-      props: shallowReactive(props),
-      // 一个布尔值标识，用于判断是否已经挂载
-      isMounted: false,
-      // 组件所渲染的内容，即子树(subTree)
-      subTree: null,
-    }
-
     // 定义 emit 函数
     // event: 事件名称
     // payload: 传递给事件处理函数的参数
@@ -161,8 +149,25 @@ export function createRenderer(options: any) {
       }
     }
 
+    // 将 vnode.children 作为 slot 对象
+    const slots = vnode.children || {}
+
+    // 定义组件实例，一个组件实例本质上就是一个对象，它包含与组件相关的状态信息
+    const instance = {
+      // 组件自身的状态数据，即 data
+      state,
+      // 将解析处的 props 包装为 shallowReactive 并定义到组件实例上
+      props: shallowReactive(props),
+      // 一个布尔值标识，用于判断是否已经挂载
+      isMounted: false,
+      // 组件所渲染的内容，即子树(subTree)
+      subTree: null,
+      // 插槽
+      slots,
+    }
+
     // 传入  setup 的第二个参数
-    const setupContext = { attrs, emit }
+    const setupContext = { attrs, emit, slots }
     // 调用 setup 函数，获得返回值
     const setupResult = setup(shallowReadOnly(instance.props), setupContext)
     // 用来存储 setup 返回的数据
@@ -184,7 +189,11 @@ export function createRenderer(options: any) {
     // 创建渲染上下文对象，本质上是组件实例的处理
     const renderContext = new Proxy(instance, {
       get(t, k, r) {
-        const { state, props } = t
+        const { state, props, slots } = t
+        if (k === '$slots') {
+          // 返回插槽
+          return slots
+        }
         // 查看 k 存在在 state 还是 props 上，并对应返回
         if (state && k in state) {
           return state[k]
