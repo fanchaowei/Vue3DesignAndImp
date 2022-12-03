@@ -13,6 +13,10 @@ export const Comment = Symbol()
 // Fragment 的标识
 export const Fragment = Symbol()
 
+
+// 全局变量，用于存储当前正在被初始化的组件实例
+let currentInstance: any = null
+
 /**
  * 创建渲染器
  * @param options 包含的扩展配置,可以直接通过该参数去自定义配置，以达成不同的环境的需求。
@@ -106,6 +110,12 @@ export function createRenderer(options: any) {
     }
   }
 
+  // 将组件实例设置到 currtentInstance 上
+  function setCurrentInstance(instance: any) {
+    currentInstance = instance
+  }
+
+
   // 挂载组件
   function mountComponent(vnode: any, container: any, anchor: any) {
     // 从 vnode 中获取组件
@@ -164,12 +174,18 @@ export function createRenderer(options: any) {
       subTree: null,
       // 插槽
       slots,
+      // 在组件实例中添加 mounted 数组，用来存储通过 onMounted 函数注册的生命周期钩子
+      mounted: []
     }
 
     // 传入  setup 的第二个参数
     const setupContext = { attrs, emit, slots }
+    // 调用 setup 函数之前，存储当前的组件实例
+    setCurrentInstance(instance)
     // 调用 setup 函数，获得返回值
     const setupResult = setup(shallowReadOnly(instance.props), setupContext)
+    // setup 函数执行后，重置 currentInstance
+    setCurrentInstance(null)
     // 用来存储 setup 返回的数据
     let setupState: any = null
 
@@ -234,7 +250,7 @@ export function createRenderer(options: any) {
         const subTree = render.call(renderContext, renderContext)
 
         // 检查组件是否已经被挂载
-        if (instance.isMounted) {
+        if (!instance.isMounted) {
           // 在这里调用 beforeMount 钩子
           beforeMount && beforeMount.call(renderContext)
           // 初次挂载，patch 第一个参数传 null
@@ -242,7 +258,7 @@ export function createRenderer(options: any) {
           // 将 isMounted 改为 true，这样就不会再执行挂载操作了
           instance.isMounted = true
           // 在这里调用 mounted 钩子
-          mounted && mounted.call(renderContext)
+          instance.mounted && instance.mounted.forEach((hook: any) => hook.call(renderContext))
         } else {
           // 调用 beforeUpdate 钩子
           beforeUpdate && beforeUpdate.call(renderContext)
@@ -813,3 +829,15 @@ function lis(arr: any) {
   }
   return result
 }
+
+
+
+  // 生命周期 mounted
+  export function onMounted(fn: Function) {
+    if(currentInstance) {
+      // 将生命周期 push 到 mounted 数组内
+      currentInstance.mounted.push(fn)
+    } else {
+      console.error('onMounted 函数只能在 setup 中调用')
+    }
+  }
