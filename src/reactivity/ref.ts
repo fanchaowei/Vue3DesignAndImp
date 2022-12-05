@@ -1,4 +1,4 @@
-import { reactive } from './reactive'
+import { reactive, shallowReactive } from './reactive'
 
 export function ref(val: any) {
   // 将原始值使用对象嵌套
@@ -14,6 +14,17 @@ export function ref(val: any) {
 
   // 使用 reactive 变为响应式
   return reactive(wrapper)
+}
+
+export function shallowRef(val: any) {
+  const wrapper = {
+    value: val,
+  } 
+
+  Object.defineProperty(wrapper, '__v_isRef', {
+    value: true
+  })
+  return shallowReactive(wrapper)
 }
 
 // 将响应式对象的属性转化为 ref
