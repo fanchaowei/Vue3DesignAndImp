@@ -98,8 +98,8 @@ export function createRenderer(options: any) {
         patchChildren(n1, n2, container)
       }
     }
-    // 处理 Component 组件
-    else if (typeof type === 'object') {
+    // 处理 Component 组件，object 为有状态组件，function 为函数式组件
+    else if (typeof type === 'object' || typeof type === 'function') {
       if (!n1) {
         // 挂载组件
         mountComponent(n2, container, anchor)
@@ -118,8 +118,18 @@ export function createRenderer(options: any) {
 
   // 挂载组件
   function mountComponent(vnode: any, container: any, anchor: any) {
+
     // 从 vnode 中获取组件
-    const componentOptions = vnode.type
+    let componentOptions = vnode.type
+    // 检查是否是函数时组件
+    const isFunctional = typeof vnode.type === 'function'
+    if(isFunctional) {
+      // 如果是函数时组件，则改变 componentOptions
+      componentOptions = {
+        render: vnode.type,
+        props: vnode.type.props
+      }
+    }
 
     // 获取组件的渲染函数 render, 与组件数据 data, 和生命周期等
     let {
