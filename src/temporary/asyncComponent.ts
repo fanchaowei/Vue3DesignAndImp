@@ -14,6 +14,31 @@ export function defineAsyncComponent(options: any) {
 
   // 用于存储异步加载的组件
   let InnerComp: any = null
+
+  // 记录重试次数
+  let retries = 0
+  // 封装 load 函数来加载异步组件
+  function load() {
+    return loader().catch((err: any) => {
+      if(options.onError) {
+        // 如果用户传入 onError，则返回一个 promise
+        return new Promise((resolve, reject) => {
+          // 重试
+          const retry = () => {
+            resolve(load())
+            retries++
+          }
+          // 失败
+          const fail = () => reject(err)
+          // 将两种方法作为参数，传给用户调用
+          options.onError(retry, fail, retries)
+        })
+      } else {
+        throw err
+      }
+    }) 
+  }
+
   return {
     name: 'AsyncComponentWrapper',
     setup() {
@@ -31,9 +56,13 @@ export function defineAsyncComponent(options: any) {
         loadingTimer = setTimeout(() => {
           loading.value = true
         }, options.delay)
+      } else {
+        loading.value = true
       }
 
-      loader().then((c: any) => {
+
+      // 调用封装的 load 来加载 loader
+      load().then((c: any) => {
           // 如果异步组件加载成功，就赋值给 InnerComp ,并将标识设置为 true
           InnerComp = c
           loaded.value = true
