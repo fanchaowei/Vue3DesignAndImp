@@ -2,7 +2,7 @@ import {
   effect,
   reactive,
   shallowReactive,
-  shallowReadOnly,
+  shallowReadOnly
 } from '../reactivity'
 import queueJob from '../util/jobQueue'
 
@@ -13,9 +13,8 @@ export const Comment = Symbol()
 // Fragment 的标识
 export const Fragment = Symbol()
 
-
 // 全局变量，用于存储当前正在被初始化的组件实例
-let currentInstance: any = null
+export let currentInstance: any = null
 
 /**
  * 创建渲染器
@@ -30,7 +29,7 @@ export function createRenderer(options: any) {
     patchProps,
     unmount,
     createText,
-    setText,
+    setText
   } = options
 
   /**
@@ -101,8 +100,13 @@ export function createRenderer(options: any) {
     // 处理 Component 组件，object 为有状态组件，function 为函数式组件
     else if (typeof type === 'object' || typeof type === 'function') {
       if (!n1) {
-        // 挂载组件
-        mountComponent(n2, container, anchor)
+        if (n2.keptAlive) {
+          // 如果存在 keptAlive 标识，则激活组件
+          n2.keepAliveInstance._activate(n2, container, anchor)
+        } else {
+          // 挂载组件
+          mountComponent(n2, container, anchor)
+        }
       } else {
         // 更新组件
         patchComponent(n1, n2, container)
@@ -115,15 +119,13 @@ export function createRenderer(options: any) {
     currentInstance = instance
   }
 
-
   // 挂载组件
   function mountComponent(vnode: any, container: any, anchor: any) {
-
     // 从 vnode 中获取组件
     let componentOptions = vnode.type
     // 检查是否是函数时组件
     const isFunctional = typeof vnode.type === 'function'
-    if(isFunctional) {
+    if (isFunctional) {
       // 如果是函数时组件，则改变 componentOptions
       componentOptions = {
         render: vnode.type,
@@ -142,7 +144,7 @@ export function createRenderer(options: any) {
       beforeUpdate,
       updated,
       props: propsOption,
-      setup,
+      setup
     } = componentOptions
 
     // 执行 beforeCreate 钩子
@@ -173,7 +175,7 @@ export function createRenderer(options: any) {
     const slots = vnode.children || {}
 
     // 定义组件实例，一个组件实例本质上就是一个对象，它包含与组件相关的状态信息
-    const instance = {
+    const instance: any = {
       // 组件自身的状态数据，即 data
       state,
       // 将解析处的 props 包装为 shallowReactive 并定义到组件实例上
@@ -186,6 +188,18 @@ export function createRenderer(options: any) {
       slots,
       // 在组件实例中添加 mounted 数组，用来存储通过 onMounted 函数注册的生命周期钩子
       mounted: []
+    }
+
+    const isKeepAlive = vnode.type.__isKeepAlive
+    if(isKeepAlive) {
+      // 如果是 keepAlive 组件，则赋予 keepAliveCtx 对象
+      instance.keepAliveCtx = {
+        move(vnode: any, container: any, anchor: any) {
+          // 可以看到 move 的本质就是移动渲染的内容到指定的容器中。
+          insert(vnode.component.subTree.el, container, anchor)
+        },
+        createElement
+      }
     }
 
     // 传入  setup 的第二个参数
@@ -248,7 +262,7 @@ export function createRenderer(options: any) {
           console.error('不存在')
         }
         return true
-      },
+      }
     })
 
     // 在这里调用 created 钩子
@@ -268,7 +282,8 @@ export function createRenderer(options: any) {
           // 将 isMounted 改为 true，这样就不会再执行挂载操作了
           instance.isMounted = true
           // 在这里调用 mounted 钩子
-          instance.mounted && instance.mounted.forEach((hook: any) => hook.call(renderContext))
+          instance.mounted &&
+            instance.mounted.forEach((hook: any) => hook.call(renderContext))
         } else {
           // 调用 beforeUpdate 钩子
           beforeUpdate && beforeUpdate.call(renderContext)
@@ -282,7 +297,7 @@ export function createRenderer(options: any) {
       },
       {
         // 用于将更新放在微任务队列中
-        scheduler: queueJob,
+        scheduler: queueJob
       }
     )
   }
@@ -787,7 +802,7 @@ export function createRenderer(options: any) {
   }
 
   return {
-    render,
+    render
   }
 }
 
@@ -840,14 +855,12 @@ function lis(arr: any) {
   return result
 }
 
-
-
-  // 生命周期 mounted
-  export function onMounted(fn: Function) {
-    if(currentInstance) {
-      // 将生命周期 push 到 mounted 数组内
-      currentInstance.mounted.push(fn)
-    } else {
-      console.error('onMounted 函数只能在 setup 中调用')
-    }
+// 生命周期 mounted
+export function onMounted(fn: Function) {
+  if (currentInstance) {
+    // 将生命周期 push 到 mounted 数组内
+    currentInstance.mounted.push(fn)
+  } else {
+    console.error('onMounted 函数只能在 setup 中调用')
   }
+}

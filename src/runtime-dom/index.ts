@@ -23,8 +23,13 @@ function unmount(vnode: any) {
     })
     return
   } else if(typeof vnode.type === 'object') {
+    if(vnode.shouldKeepAlive) {
+      // 如果是 keepAlive ，则调用 keepAlive 提供的方法，使其失活。
+      vnode.keepAliveInstance._deActivate(vnode)
+    } else {
     // 对于组件，则是卸载组件所渲染的内容，即 subTree
     unmount(vnode.component.subTree)
+    }
     return
   }
   // 获取元素的父级
