@@ -3,6 +3,10 @@ import { currentInstance, Fragment } from '../runtime-core'
 export const KeepAlive: any = {
   // Keep Alive 特有得标识
   __isKeepAlive: true,
+  props: {
+    include: RegExp, // 只输入正则表达式，RegExp 是正则的类型
+    exclude: RegExp
+  },
   setup(props: any, { slots }: any) {
     // 创建一个缓存对象
     // key：vnode.type
@@ -30,6 +34,12 @@ export const KeepAlive: any = {
       let rawVNode = slots.default()
       // 如果不是组件，则直接渲染，非组件的虚拟节点不能 keepAlive
       if(typeof rawVNode.type !== 'object') {
+        return rawVNode
+      }
+
+      const name = rawVNode.type.name
+      // 查看 keepAlive 内的组件是否被 exclude 匹配，并不被 include 匹配，匹配成功则直接渲染虚拟节点
+      if(name && ((props.include && !props.include.test(name)) || (props.exclude && props.exclude.test(name)) )) {
         return rawVNode
       }
 
