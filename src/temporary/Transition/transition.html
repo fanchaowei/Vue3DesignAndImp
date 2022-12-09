@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>transition</title>
+  </head>
+  <body>
+    <div></div>
+  </body>
+  <script>
+    // 创建 class 为 box 的 DOM 元素
+    const el = document.createElement('div')
+    el.classList.add('box')
+
+    // 在 DOM 元素被添加到页面之前，将初始状态和运动过程定义到元素上
+    el.classList.add('enter-from') // 初始状态
+    el.classList.add('enter-active') // 运动过程
+
+    // 将元素添加到页面
+    document.body.appendChild(el)
+    requestAnimationFrame(() => {
+      // 再嵌套一层，解决 bug
+      requestAnimationFrame(() => {
+        el.classList.remove('enter-from')
+        el.classList.add('enter-to')
+
+        // 监听 transitionend 事件，完成收尾工作
+        el.addEventListener('transitionend', () => {
+          el.classList.remove('enter-to')
+          el.classList.remove('enter-active')
+        })
+      })
+    })
+
+    // 卸载元素的事件
+    el.addEventListener('click', () => {
+      // 将卸载动作封装在函数中，等到过渡动画结束再调用
+      const performRemove = () => el.parentNode.removeChild(el)
+
+      // 设置初始状态和运动过程
+      el.classList.add('leave-from')
+      el.classList.add('leave-active')
+
+      // 强制 reflow：使初始状态生效
+      document.body.offsetHeight
+
+      // 再下一帧切换状态
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // 切换到结束状态
+          el.classList.remove('leave-from')
+          el.classList.add('leave-to')
+
+          // 监听 transitionend 事件，完成收尾工作
+          el.addEventListener('transitionend', () => {
+            el.classList.remove('leave-to')
+            el.classList.remove('leave-active')
+
+            // 调用卸载函数
+            performRemove()
+          })
+        })
+      })
+    })
+  </script>
+  <style>
+    .box {
+      width: 100px;
+      height: 100px;
+      background-color: red;
+    }
+    .enter-from {
+      transform: translateX(200px);
+    }
+    .enter-active {
+      transition: transform 1s ease-in-out;
+    }
+    .enter-to {
+      transform: translateX(0);
+    }
+    .leave-from {
+      transform: translateX(0);
+    }
+    .leave-to {
+      transform: translateX(200px);
+    }
+    .leave-active {
+      transition: transform 2s ease-in-out;
+    }
+  </style>
+</html>

@@ -97,8 +97,8 @@ export function createRenderer(options: any) {
         patchChildren(n1, n2, container)
       }
     }
-    // 处理 Teleport 
-    else if(typeof type === 'object' && type.__isTeleport) {
+    // 处理 Teleport
+    else if (typeof type === 'object' && type.__isTeleport) {
       // 调用 Teleport 组件选项中的 process 函数，将控制权交接出去
       type.process(n1, n2, container, anchor, {
         patch,
@@ -106,7 +106,11 @@ export function createRenderer(options: any) {
         unmount,
         move(vnode: any, container: any, anchor: any) {
           // 判断一下移动的是组件还是普通元素
-          insert(vnode.component?vnode.component.subTree.el:vnode.el, container, anchor)
+          insert(
+            vnode.component ? vnode.component.subTree.el : vnode.el,
+            container,
+            anchor
+          )
         }
       })
     }
@@ -204,7 +208,7 @@ export function createRenderer(options: any) {
     }
 
     const isKeepAlive = vnode.type.__isKeepAlive
-    if(isKeepAlive) {
+    if (isKeepAlive) {
       // 如果是 keepAlive 组件，则赋予 keepAliveCtx 对象
       instance.keepAliveCtx = {
         move(vnode: any, container: any, anchor: any) {
@@ -404,8 +408,20 @@ export function createRenderer(options: any) {
       }
     }
 
+    // 是否是 transition 组件
+    const needTransition = vnode.transition
+    // beforeEnter 钩子
+    if (needTransition) {
+      vnode.transition.beforeEnter(el)
+    }
+
     // 将元素添加到容器中
     insert(el, container, anchor)
+
+    // enter 钩子
+    if (needTransition) {
+      vnode.transition.enter(el)
+    }
   }
 
   /**

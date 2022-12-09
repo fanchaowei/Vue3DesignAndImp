@@ -22,21 +22,29 @@ function unmount(vnode: any) {
       unmount(c)
     })
     return
-  } else if(typeof vnode.type === 'object') {
-    if(vnode.shouldKeepAlive) {
+  } else if (typeof vnode.type === 'object') {
+    if (vnode.shouldKeepAlive) {
       // 如果是 keepAlive ，则调用 keepAlive 提供的方法，使其失活。
       vnode.keepAliveInstance._deActivate(vnode)
     } else {
-    // 对于组件，则是卸载组件所渲染的内容，即 subTree
-    unmount(vnode.component.subTree)
+      // 对于组件，则是卸载组件所渲染的内容，即 subTree
+      unmount(vnode.component.subTree)
     }
     return
   }
   // 获取元素的父级
   const parent = vnode.el.parentNode
+  // 是否需要过渡
+  const needTransition = vnode.transition
   if (parent) {
-    // 卸载元素
-    parent.removeChild(vnode.el)
+    // 将卸载动作封装到 performRemove 函数中
+    const performRemove = () => parent.removeChild(vnode.el)
+    // 判断是否是 transition 组件，是则走 transition 的方法，不是则直接卸载
+    if (needTransition) {
+      vnode.transition.leave(vnode.el, performRemove)
+    } else {
+      performRemove()
+    }
   }
 }
 // 创建文本节点
@@ -124,7 +132,7 @@ const renderer = createRenderer({
   patchProps,
   unmount,
   createText,
-  setText,
+  setText
 })
 
 // 将设置好自定义方法配置的 renderer 实例封装，以提供给用户使用。
