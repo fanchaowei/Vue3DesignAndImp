@@ -97,6 +97,19 @@ export function createRenderer(options: any) {
         patchChildren(n1, n2, container)
       }
     }
+    // 处理 Teleport 
+    else if(typeof type === 'object' && type.__isTeleport) {
+      // 调用 Teleport 组件选项中的 process 函数，将控制权交接出去
+      type.process(n1, n2, container, anchor, {
+        patch,
+        patchChildren,
+        unmount,
+        move(vnode: any, container: any, anchor: any) {
+          // 判断一下移动的是组件还是普通元素
+          insert(vnode.component?vnode.component.subTree.el:vnode.el, container, anchor)
+        }
+      })
+    }
     // 处理 Component 组件，object 为有状态组件，function 为函数式组件
     else if (typeof type === 'object' || typeof type === 'function') {
       if (!n1) {
