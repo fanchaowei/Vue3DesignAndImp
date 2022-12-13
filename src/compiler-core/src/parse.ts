@@ -54,7 +54,7 @@ export function tokenize(str: String) {
         } else if (char === '/') {
           // 如果是 / ，进入结束标签状态
           currentState = State.tagEnd
-          str.slice(1)
+          str = str.slice(1)
         }
         break
       // 标签名称状态
@@ -73,7 +73,7 @@ export function tokenize(str: String) {
           })
           // 字符缓存清空
           chars.length = 0
-          str.slice(1)
+          str = str.slice(1)
         }
         break
       // 文本状态
@@ -84,7 +84,7 @@ export function tokenize(str: String) {
           str = str.slice(1)
         } else if (char === '<') {
           // 如果是 < ，说明已经结束了文本状态，进入结束标签状态
-          currentState = State.text
+          currentState = State.tagOpen
           // 创建一个文本 token，讲当前缓存信息存入
           tokens.push({
             type: 'text',
@@ -125,4 +125,54 @@ export function tokenize(str: String) {
     }
   }
   return tokens
+}
+
+// 构建 AST
+export function parse(str: String) {
+  // 获取 tokens
+  const tokens = tokenize(str)
+  // 创建 root 节点
+  const root = {
+    type: 'Root',
+    children: []
+  }
+  // 创建 elementStack 栈，起初只有 Root 根节点
+  const elementStack = [root]
+  while (tokens.length) {
+    // 取出栈顶的节点，也是当前循环节点的父节点
+    const parent: any = elementStack[elementStack.length - 1]
+    // 取出当前处理的 token
+    const t = tokens[0]
+    switch (t.type) {
+      case 'tag':
+        // 如果当前 Token 是开始标签，则创建 Element 类型的 AST 节点
+        const elementNode = {
+          type: 'Element',
+          tag: t.name,
+          children: []
+        }
+        // 将其添加到父级节点的 children 中
+        parent.children.push(elementNode)
+        // 将该 AST 节点压入栈中
+        elementStack.push(elementNode)
+        break
+      case 'text':
+        // 如果是文本，则创建 Text 类型的 AST 节点
+        const textNode: any = {
+          type: 'Text',
+          content: t.content
+        }
+        // 将其添加到父节点的 children 中
+        parent.children.push(textNode)
+        break
+      case 'tagEnd':
+        // 如果是结束标签，将栈顶的 AST 节点弹出
+        elementStack.pop()
+        break
+    }
+    // 清除本次处理的 token
+    tokens.shift()
+  }
+  // 返回 AST
+  return root
 }
