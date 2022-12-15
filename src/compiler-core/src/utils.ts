@@ -15,3 +15,33 @@ export function dump(node: any, indent = 0) {
     node.children.forEach((n: any) => dump(n, indent + 2))
   }
 }
+
+// 用来创建描述 StringLiteral 节点
+export function createStringLiteral(value: any) {
+  return {
+    type: 'StringLiteral',
+    value
+  }
+}
+// 创建描述 Identifier 节点
+export function createIdentifier(name: any) {
+  return {
+    type: 'Identifier',
+    name
+  }
+}
+// 创建 ArrayExpression 节点
+export function createArrayExpression(elements: any) {
+  return {
+    type: 'ArrayExpression',
+    elements
+  }
+}
+// 创建 CallExpression 节点
+export function createCallExpression(callee: any, argument: any) {
+  return {
+    type: 'CallExpression',
+    callee,
+    arguments: argument
+  }
+}
