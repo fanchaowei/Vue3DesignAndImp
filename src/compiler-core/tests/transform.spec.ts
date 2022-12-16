@@ -3,6 +3,7 @@ import { transforms } from '../src/transform'
 import { dump } from '../src/utils'
 
 describe('transform', () => {
+  // 将模板 AST 转换为 JavaScript AST
   test('base', () => {
     const ast: any = parse(`<div><p>Vue</p><p>Template</p></div>`)
     transforms(ast)
