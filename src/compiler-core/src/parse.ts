@@ -216,7 +216,7 @@ function parseChildren(context: any, ancestors: any): any {
   const { mode, source } = context
 
   // 遍历直至字符串全部解析完毕
-  while (isEnd(context, ancestors)) {
+  while (!isEnd(context, ancestors)) {
     let node: any
     // 模式为 DATA 或 RCDATA 才进入
     if (mode === TextModes.DATA || mode === TextModes.RCDATA) {
@@ -231,6 +231,9 @@ function parseChildren(context: any, ancestors: any): any {
           }
         } else if (source[1] === '/') {
           // 转换结束标签
+          // 这里需要抛出错误，因为结束标签并不是在状态机内部处理，所以当遭遇结束标签时，抛出错误
+          console.error('无效的结束标签')
+          continue
         } else if (/[a-z]/i.test(source[1])) {
           // 转换标签
           node = parseElement(context, ancestors)
@@ -261,16 +264,38 @@ function parseComment(context: any) {
 function parseCDATA(context: any) {
   // Implement
 }
-
+// 转换标签
 function parseElement(context: any, ancestors: any) {
-  // Implement
+  const element = parseTag(context)
+  if (element.isSelfClosing) return element
+
+  ancestors.push(element)
+  element.children = parseChildren(context, ancestors)
+  ancestors.pop()
+
+  if (context.source.startsWith(`</${element.tag}`)) {
+    parseTag(context, 'end')
+  } else {
+    console.error(`${element.tag} 标签缺少闭合标签`)
+  }
+  return element
+}
+
+function parseTag(context: any, type: any = ''): any {
+  return undefined
 }
 
 function parseInterpolation(context: any) {
   // Implement
 }
 
+// 是否停止状态机，true 停止
 function isEnd(context: any, ancestors: any) {
-  // Implement
-  return true
+  // 当模板内容解析完毕后，停止
+  if (!context.source) return true
+  // 将 source 的开头与栈内的所有节点做比较
+  for (let i = 0; i < ancestors.length; i++) {
+    // 如果与任意一项栈内的节点符合，则停止状态机
+    if (context.source.startsWith(`<${ancestors[i].tag}`)) return true
+  }
 }
