@@ -66,4 +66,21 @@ describe('_Parse', () => {
       ]
     })
   })
+  // 解析文本
+  test('text', () => {
+    const template = '<div>Text</div>'
+    const ast = _parse(template)
+    expect(ast).toStrictEqual({
+      type: 'Root',
+      children: [
+        {
+          type: 'Element',
+          tag: 'div',
+          props: [],
+          isSelfClosing: false,
+          children: [{ type: 'Text', content: 'Text' }]
+        }
+      ]
+    })
+  })
 })

@@ -269,9 +269,32 @@ function parseChildren(context: any, ancestors: any): any {
   }
   return nodes
 }
-
+// 解析文本
 function parseText(context: any) {
-  // Implement
+  // 文本的长度，默认为整个 context.souce
+  let endIndex = context.source.length
+  // 找到下一个 < 的位置
+  const ltIndex = context.source.indexOf('<')
+  // 找到下一个 {{ 的位置
+  const delimiterIndex = context.source.indexOf('{{')
+
+  // 比较一下 context.source 的长度和 < 的位置、{{ 的位置的大小，取最小的
+  if (ltIndex > -1 && ltIndex < endIndex) {
+    endIndex = ltIndex
+  }
+  if (delimiterIndex > -1 && delimiterIndex < endIndex) {
+    endIndex = delimiterIndex
+  }
+  // 获取文本
+  const content = context.source.slice(0, endIndex)
+  // 消耗文本字符
+  context.advanceBy(content.length)
+
+  // 返回文本节点
+  return {
+    type: 'Text',
+    content
+  }
 }
 
 function parseComment(context: any) {
