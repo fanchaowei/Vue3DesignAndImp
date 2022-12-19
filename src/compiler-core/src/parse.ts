@@ -313,7 +313,7 @@ function parseElement(context: any, ancestors: any) {
   return element
 }
 // 用来处理开始标签和结束标签
-//  第二个参数，type 用于区分是开始标签还是结束标签，'start' 为开始，‘end’ 为结束
+// 第二个参数，type 用于区分是开始标签还是结束标签，'start' 为开始，‘end’ 为结束
 function parseTag(context: any, type: any = 'start'): any {
   const { advanceBy, advanceSpaces } = context
 
@@ -328,6 +328,8 @@ function parseTag(context: any, type: any = 'start'): any {
   advanceBy(match[0].length)
   // 消耗掉空白的字符
   advanceSpaces()
+  // 解析字符，获得 props 数组
+  const props = parseAttributes(context)
 
   // 判断是否是自闭标签
   const isSelfClosing = context.source.startsWith('/>')
@@ -339,12 +341,73 @@ function parseTag(context: any, type: any = 'start'): any {
     // 标签的名称
     tag,
     // 标签的属性
-    props: [],
+    props,
     // 子节点留空
     children: [],
     // 是否自闭合
     isSelfClosing
   }
+}
+// 解析字符，获得 props 数组
+function parseAttributes(context: any): any {
+  const { advanceBy, advanceSpaces } = context
+  // 用来存储解析过程中产生的属性节点和指令节点
+  const props: any = []
+
+  // 只有不遇到结束部分的字符，就一直循环处理
+  while (!context.source.startsWith('>') && !context.source.startsWith('/>')) {
+    // 匹配属性的名称
+    const match: any = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source)
+    // 获得属性名称
+    const name = match[0]
+    // 消耗属性名称的字符
+    advanceBy(name.length)
+    // 消耗属性名称之间的空格
+    advanceSpaces()
+    // 消耗等号
+    advanceBy(1)
+    advanceSpaces()
+
+    // 属性值
+    let value = ''
+    // 获得第一个字符
+    const quote = context.source[0]
+    // 字符是否是引号
+    const isQuoted = quote === `"` || quote === `'`
+    if (isQuoted) {
+      // 如果是引号
+      // 消耗掉第一个引号
+      advanceBy(1)
+      // 获取下一个引号的位置
+      const endQuoteIndex = context.source.indexOf(quote)
+      if (endQuoteIndex > -1) {
+        // 获取下一个引号之前的字符，即属性值
+        value = context.source.slice(0, endQuoteIndex)
+        // 消费属性值字符
+        advanceBy(value.length)
+        // 消费引号
+        advanceBy(1)
+      } else {
+        console.error('缺少引号')
+      }
+    } else {
+      // 不是引号，那么到下一个空白字符之前的所有内容，都作为属性值
+      const match: any = /^[^\t\r\n\f >]+/.exec(context.source)
+      // 获取属性值
+      value = match[0]
+      // 消耗属性值字符
+      advanceBy(value.length)
+    }
+    // 消耗属性后的空格
+    advanceSpaces()
+    // 添加到 props 数组
+    props.push({
+      type: 'Attribute',
+      name,
+      value
+    })
+  }
+  return props
 }
 
 function parseInterpolation(context: any) {
