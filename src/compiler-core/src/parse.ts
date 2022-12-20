@@ -1,3 +1,5 @@
+import { namedCharacterReferences } from '../../shared/parse'
+
 // 定义状态机的状态
 const State = {
   initial: 1, // 初始状态
@@ -293,7 +295,7 @@ function parseText(context: any) {
   // 返回文本节点
   return {
     type: 'Text',
-    content
+    content: decodeHtml(content) // 调用 decodeHtml 函数解码内容
   }
 }
 
@@ -446,4 +448,101 @@ function isEnd(context: any, ancestors: any) {
     // 如果与任意一项栈内的节点符合，则停止状态机
     if (context.source.startsWith(`</${ancestors[i].tag}`)) return true
   }
+}
+// 第一个参数为要被解码的文本内容
+// 第二个参数是一个布尔值，代表文本内容是否作为属性值
+function decodeHtml(rawText: string, asAttr = false) {
+  // 一个标识，标识已经处理了多少字符
+  let offset = 0
+  const end = rawText.length
+  // 经过解码后的文本，将作为返回值返回
+  let decodedText = ''
+  // 引用表中实体名称的最大长度
+  let maxCRNameLength = 0
+
+  // advance 函数用于消费指定长度的文本
+  function advance(length: number) {
+    offset += length
+    rawText = rawText.slice(length)
+  }
+
+  // 消费字符串，直到处理完毕位置
+  while (offset < end) {
+    // 用于匹配字符引用的开始部分，如果匹配成功，那么 head[0] 的值可能有三种：
+    // 1. head[0] === '&'，说明该字符引用是命名字符引用
+    // 2. head[0] === '&#'，说明该字符引用时用于十进制标识数字字符引用
+    // 3. head[0] === '&#x'，说明该字符引用是用于十六进制标识的数字字符引用
+    const head = /&(?:#x?)?/i.exec(rawText)
+    // 如果没有匹配的，说明没有需要解码的内容
+    if (!head) {
+      // 计算剩余内容的长度
+      const remaining = end - offset
+      // 酱剩余内容加到 decodeText 上
+      decodedText += rawText.slice(0, remaining)
+      // 消耗这部分的字段
+      advance(remaining)
+      break
+    }
+
+    // head.index 为匹配的字符 & 在 rawText 中的位置索引
+    // 截取字符 & 之前的内容加到 decodeText 上
+    decodedText += rawText.slice(0, head.index)
+    // 消耗字符 & 之前的内容
+    advance(head.index)
+
+    if (head[0] === '&') {
+      // 命名字符名称
+      let name = ''
+      // 命名字符的值
+      let value = ''
+
+      // 字符 & 的下一个字符必须为 ASCII 字母或数字
+      if (/[0-9a-z]/i.test(rawText[1])) {
+        // 如果引用表的长度最大值，则赋值
+        if (!maxCRNameLength) {
+          // 循环引用表，获取最大值
+          maxCRNameLength = Object.keys(namedCharacterReferences).reduce(
+            (max, name) => {
+              return Math.max(max, name.length)
+            },
+            0
+          )
+        }
+        // 循环开始寻找符合规则的 HTML 实体
+        for (let length = maxCRNameLength; !value && length > 0; --length) {
+          // 截取字符 & 后面的引用表最大值的值，作为名称
+          name = rawText.substring(1, length)
+          // 通过截取的名称尝试在引用表中找到对应的value
+          value = namedCharacterReferences[name]
+        }
+        // 如果找到对应的值
+        if (value) {
+          const semi = name.endsWith(';')
+          // 如果文本内容是作为属性值，并且 name 最后一位不是分号，并且下一位是等号、字母或数字
+          // 由于历史缘由，作为普通文本
+          if (
+            asAttr &&
+            !semi &&
+            /[=a-z0-9]/i.test(rawText[name.length + 1] || '')
+          ) {
+            decodedText += '&' + name
+            advance(1 + name.length)
+          } else {
+            // 如果不是，则正常解码
+            decodedText += value
+            advance(1 + name.length)
+          }
+        } else {
+          // 没有找到对应的值，作为普通文本处理
+          decodedText += '&' + name
+          advance(1 + name.length)
+        }
+      } else {
+        // 如果不符合，则当作普通文本处理
+        decodedText += '&'
+        advance(1)
+      }
+    }
+  }
+  return decodedText
 }

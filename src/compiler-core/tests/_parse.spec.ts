@@ -83,4 +83,21 @@ describe('_Parse', () => {
       ]
     })
   })
+  // 解码命名字符
+  test('decode text', () => {
+    const template = '<div>Text&ltcc</div>'
+    const ast = _parse(template)
+    expect(ast).toStrictEqual({
+      type: 'Root',
+      children: [
+        {
+          type: 'Element',
+          tag: 'div',
+          props: [],
+          isSelfClosing: false,
+          children: [{ type: 'Text', content: 'Text<cc' }]
+        }
+      ]
+    })
+  })
 })
