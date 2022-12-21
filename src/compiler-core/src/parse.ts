@@ -1,4 +1,4 @@
-import { namedCharacterReferences } from '../../shared/parse'
+import { namedCharacterReferences, CCR_REPLACEMENTS } from '../../shared/parse'
 
 // 定义状态机的状态
 const State = {
@@ -541,6 +541,46 @@ function decodeHtml(rawText: string, asAttr = false) {
         // 如果不符合，则当作普通文本处理
         decodedText += '&'
         advance(1)
+      }
+    } else {
+      // 判断是十进制还是十六进制
+      const hex = head[0] === '&#x'
+      // 不同进制，正则不同
+      const pattern = hex ? /^&#x([0-9a-f]+);?/i : /^&#([0-9]+);?/i
+      // 通过正则获取数字字符 Unicode 码点
+      const body = pattern.exec(rawText)
+
+      if (body) {
+        // 将码点转换为数字
+        let cp = Number.parseInt(body[1], hex ? 16 : 10)
+        // 码点的合法性检查
+        if (cp === 0) {
+          // 如果码点值为 0x00，替换为 0xfffd
+          cp = 0xfffd
+        } else if (cp > 0x10ffff) {
+          // 如果码点值超过 Unicode 最大值，替换为 0xfffd
+          cp = 0xfffd
+        } else if (cp >= 0xd800 && cp <= 0xdfff) {
+          // 如果码点值处于 surrogate pair 范围内，替换为 0xfffd
+          cp = 0xfffd
+        } else if ((cp >= 0xfdd0 && cp <= 0xfdef) || (cp & 0xfffe) === 0xfffe) {
+          // 如果码点值处于 noncharacter 范围内，则什么都不做，交给平台处理
+        } else if (
+          (cp >= 0x01 && cp <= 0x08) ||
+          cp === 0x0b ||
+          (cp >= 0x0d && cp <= 0x1f) ||
+          (cp >= 0x7f && cp <= 0x9f)
+        ) {
+          // 控制字符集的范围是：[0x01, 0x1f] 加上 [0x7f, 0x9f]
+          // 去掉 ASICC 空白符：0x09(TAB)、0x0A(LF)、0x0C(FF)
+          // 0x0D(CR) 虽然也是 ASICC 空白符，但需要包含
+
+          // 在表中查找替换码点，如果找不到就使用原码点
+          cp = CCR_REPLACEMENTS[cp] || cp
+        }
+        // 最后进行解码
+        decodedText += String.fromCodePoint(cp)
+        advance(body[0].length)
       }
     }
   }

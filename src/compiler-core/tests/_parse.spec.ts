@@ -100,4 +100,21 @@ describe('_Parse', () => {
       ]
     })
   })
+  // 解码数字字符引用
+  test('decode number test', () => {
+    const template = '<div>Text - &#65; - &#x33;</div>'
+    const ast = _parse(template)
+    expect(ast).toStrictEqual({
+      type: 'Root',
+      children: [
+        {
+          type: 'Element',
+          tag: 'div',
+          props: [],
+          isSelfClosing: false,
+          children: [{ type: 'Text', content: 'Text - A - 3' }]
+        }
+      ]
+    })
+  })
 })
