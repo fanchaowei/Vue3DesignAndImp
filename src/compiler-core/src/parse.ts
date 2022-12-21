@@ -230,11 +230,11 @@ export function _parse(str: string) {
 function parseChildren(context: any, ancestors: any): any {
   // 存储解析后的子节点
   let nodes = []
-  // 上下文对象中取得数据
-  const { mode, source } = context
 
   // 遍历直至字符串全部解析完毕
   while (!isEnd(context, ancestors)) {
+    // 上下文对象中取得数据
+    const { mode, source } = context
     let node: any
     // 模式为 DATA 或 RCDATA 才进入
     if (mode === TextModes.DATA || mode === TextModes.RCDATA) {
@@ -298,15 +298,28 @@ function parseText(context: any) {
     content: decodeHtml(content) // 调用 decodeHtml 函数解码内容
   }
 }
-
+// 解析注释
 function parseComment(context: any) {
-  // Implement
+  const { advanceBy } = context
+  // 消耗开始注释标签
+  advanceBy('<!--'.length)
+  // 查找结束注释标签的位置
+  const closeIndex = context.source.indexOf('-->')
+  // 截取注释内容
+  const content = context.source.slice(0, closeIndex)
+  // 消耗内容字符和结束注释标签
+  advanceBy(content.length)
+  advanceBy('-->'.length)
+  return {
+    type: 'Comment',
+    content
+  }
 }
 
 function parseCDATA(context: any) {
   // Implement
 }
-// 转换标签
+// 解析标签
 function parseElement(context: any, ancestors: any) {
   // 调用 parseTag 函数解析开始标签
   const element = parseTag(context)
@@ -434,9 +447,32 @@ function parseAttributes(context: any): any {
   }
   return props
 }
-
+// 解析插值
 function parseInterpolation(context: any) {
-  // Implement
+  const { advanceBy } = context
+  // 消耗开始界定符
+  advanceBy('{{'.length)
+  // 找到结束界定符的位置
+  const closeIndex = context.source.indexOf('}}')
+  if (closeIndex < 0) {
+    // 如果没找到结束界定符，则抛出错误
+    console.error('插值缺少结束定界符')
+  }
+  // 截取内容部分。
+  const content = context.source.slice(0, closeIndex)
+  // 消耗内容部分的字符及结束界定符
+  advanceBy(content.length)
+  advanceBy('}}'.length)
+
+  return {
+    type: 'Interpolation',
+    // 插值节点对的 content 是一个类型为 EXpression 的表达式节点
+    content: {
+      type: 'Expression',
+      // 表达式节点的内容则是经过 HTML 解码后的插值表达式
+      content: decodeHtml(content)
+    }
+  }
 }
 
 // 是否停止状态机，true 停止

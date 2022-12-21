@@ -117,4 +117,35 @@ describe('_Parse', () => {
       ]
     })
   })
+  // 解析插值和注释
+  test('interpolation and comment', () => {
+    const ast = _parse(`<div>foo {{ bar }} baz <!-- comment --></div>`)
+    expect(ast).toStrictEqual({
+      type: 'Root',
+      children: [
+        {
+          type: 'Element',
+          tag: 'div',
+          isSelfClosing: false,
+          props: [],
+          children: [
+            { type: 'Text', content: 'foo ' },
+            // 插值节点
+            {
+              type: 'Interpolation',
+              content: {
+                type: 'Expression',
+                content: ' bar '
+              }
+            },
+            { type: 'Text', content: ' baz ' },
+            {
+              type: 'Comment',
+              content: ' comment '
+            }
+          ]
+        }
+      ]
+    })
+  })
 })
