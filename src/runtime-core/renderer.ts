@@ -434,28 +434,47 @@ export function createRenderer(options: any) {
     const oldProps = n1.props
     const newProps = n2.props
 
-    //#region 更新 props
-
-    for (const key in newProps) {
-      // 查看新的 Props 属性与旧的 Props 属性是否不同
-      if (newProps[key] !== oldProps[key]) {
-        // 不同则需要更新 props
-        patchProps(el, key, oldProps[key], newProps[key])
+    if (n2.patchFlags) {
+      const flags = n2.patchFlags
+      if (flags === 1) {
+        // 只更新文本内容
+      } else if (flags === 2) {
+        // 只更新 class
+      } else if (flags === 3) {
+        // 只更新 style
+      }
+    } else {
+      // 全量更新
+      for (const key in newProps) {
+        // 查看新的 Props 属性与旧的 Props 属性是否不同
+        if (newProps[key] !== oldProps[key]) {
+          // 不同则需要更新 props
+          patchProps(el, key, oldProps[key], newProps[key])
+        }
+      }
+      for (const key in oldProps) {
+        // 查看旧 Props 中的属性在新的 Props 内是否存在
+        if (!(key in newProps)) {
+          // 不存在说明新的 Props 已经删除了该属性，进行更新
+          patchProps(el, key, oldProps[key], null)
+        }
       }
     }
-
-    for (const key in oldProps) {
-      // 查看旧 Props 中的属性在新的 Props 内是否存在
-      if (!(key in newProps)) {
-        // 不存在说明新的 Props 已经删除了该属性，进行更新
-        patchProps(el, key, oldProps[key], null)
-      }
-    }
-
-    //#endregion
 
     // 更新 children
-    patchChildren(n1, n2, el)
+    if (n2.dynamicChildren) {
+      // 如果存在动态节点集合，则直接从动态节点集合里进行更新，这样就只更新动态节点，防止静态节点更新，节省性能开销。
+      patchBlockChildren(n1, n2)
+    } else {
+      patchChildren(n1, n2, el)
+    }
+  }
+  // 处理动态节点集合
+  function patchBlockChildren(n1: any, n2: any) {
+    for (let i = 0; i < n2.dynamicChildren.length; i++) {
+      // 依次循环遍历，处理动态节点
+      patchElement(n1.dynamicChildren[i], n2.dynamicChildren[i])
+    }
   }
 
   /**
