@@ -2,7 +2,7 @@ import {
   effect,
   reactive,
   shallowReactive,
-  shallowReadOnly
+  shallowReadOnly,
 } from '../reactivity'
 import queueJob from '../util/jobQueue'
 
@@ -29,7 +29,7 @@ export function createRenderer(options: any) {
     patchProps,
     unmount,
     createText,
-    setText
+    setText,
   } = options
 
   /**
@@ -111,7 +111,7 @@ export function createRenderer(options: any) {
             container,
             anchor
           )
-        }
+        },
       })
     }
     // 处理 Component 组件，object 为有状态组件，function 为函数式组件
@@ -140,13 +140,13 @@ export function createRenderer(options: any) {
   function mountComponent(vnode: any, container: any, anchor: any) {
     // 从 vnode 中获取组件
     let componentOptions = vnode.type
-    // 检查是否是函数时组件
+    // 检查是否是函数式组件
     const isFunctional = typeof vnode.type === 'function'
     if (isFunctional) {
       // 如果是函数时组件，则改变 componentOptions
       componentOptions = {
         render: vnode.type,
-        props: vnode.type.props
+        props: vnode.type.props,
       }
     }
 
@@ -161,7 +161,7 @@ export function createRenderer(options: any) {
       beforeUpdate,
       updated,
       props: propsOption,
-      setup
+      setup,
     } = componentOptions
 
     // 执行 beforeCreate 钩子
@@ -204,7 +204,7 @@ export function createRenderer(options: any) {
       // 插槽
       slots,
       // 在组件实例中添加 mounted 数组，用来存储通过 onMounted 函数注册的生命周期钩子
-      mounted: []
+      mounted: [],
     }
 
     const isKeepAlive = vnode.type.__isKeepAlive
@@ -215,7 +215,7 @@ export function createRenderer(options: any) {
           // 可以看到 move 的本质就是移动渲染的内容到指定的容器中。
           insert(vnode.component.subTree.el, container, anchor)
         },
-        createElement
+        createElement,
       }
     }
 
@@ -279,12 +279,14 @@ export function createRenderer(options: any) {
           console.error('不存在')
         }
         return true
-      }
+      },
     })
 
     // 在这里调用 created 钩子
     created && created.call(renderContext)
 
+    // 这个 effect 函数的副作用函数触发靠的是组件实例 instance 的 state 和 props 和 setupState 触发
+    // 因为 state 和 props 和 setupState 都是响应式的，所以当这些数据发生变化时，就会触发副作用函数
     effect(
       () => {
         // 执行渲染函数，获取组件要渲染的内容。即 render 函数返回的虚拟 DOM
@@ -314,7 +316,7 @@ export function createRenderer(options: any) {
       },
       {
         // 用于将更新放在微任务队列中
-        scheduler: queueJob
+        scheduler: queueJob,
       }
     )
   }
@@ -606,7 +608,7 @@ export function createRenderer(options: any) {
             // 如果存在，则更新节点
             newVNode = newChildren[k]
             patch(oldVNode, newVNode, container, null)
-            // 存入数组
+            // 存入数组，k - newStart 就是这个 key 的虚拟节点在新 children 数组的处理区间内的位置
             source[k - newStart] = i
             // 判断是否需要移动
             if (k < pos) {
@@ -784,7 +786,7 @@ export function createRenderer(options: any) {
     const newLen = newChildren.length
 
     let lastIndex = 0 // 用于存储循环中遇到的最大索引值
-    // 遍历新 children ，每遍历依次就遍历旧 children 查找有没有 key 相同的节点
+    // 遍历新 children ，每遍历一次就遍历旧 children 查找有没有 key 相同的节点
     for (let i = 0; i < newLen; i++) {
       // 判断是否在旧 children 中找到可复用节点的标识
       let find = false
@@ -850,7 +852,7 @@ export function createRenderer(options: any) {
   }
 
   return {
-    render
+    render,
   }
 }
 
