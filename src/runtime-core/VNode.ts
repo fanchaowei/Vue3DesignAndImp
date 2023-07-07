@@ -28,11 +28,11 @@ export function createVNode(tag: any, props: any, children: any, flags?: any) {
   props && delete props.key
 
   const vnode = {
-    tag,
+    type: tag,
     props,
     children,
     key,
-    patchFlags: flags
+    patchFlags: flags,
   }
 
   // 如果是动态节点，则存入动态节点集合中
