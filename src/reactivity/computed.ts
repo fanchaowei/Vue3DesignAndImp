@@ -14,6 +14,7 @@ export function computed(getter: any) {
         // 当 getter 内的数据发生变动时，触发该 scheduler ，将 dirty 设置为 true 。
         dirty = true
         // 当计算属性依赖的响应式数据变化时，手动调用 trigger 函数触发响应
+        // 为什么我们要手动触发呢？因为当发生 effect 多层嵌套的时候，当计算属性变化，外层的 effect 不会被内层的 effect 收集到，所以我们需要手动触发。
         trigger(obj, 'value')
       }
     },

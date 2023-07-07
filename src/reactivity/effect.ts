@@ -6,6 +6,9 @@ let activeEffect: any
 // 为了避免嵌套的 effect 中，activeEffect 互相影响，所以增加一个 stack 来处理，当有新增的副作用函数就存入，执行完就推出。
 const effectStack: any = []
 // 存储 对象 -> 属性 -> 副作用函数 的桶。
+// 为什么这里选择 WeakMap 而不是 Map？
+// 因为被 Map 作为 key 的对象，即使没有其他引用，也不会被垃圾回收，可以通过 Map.keys() 获取到
+// 而 WeakMap 的 key 在没有其他引用的时候会被垃圾回收，这样就节省了内存。因为没有其他引用意味着这个对象已经无用了
 const bucket = new WeakMap()
 // 拦截 for...in 等循环的一些操作，用于链接副作用函数所使用的枚举
 export const ITERATE_KEY = Symbol()
@@ -122,6 +125,7 @@ export function trigger(target: any, key: any, type?: any, newVal?: any) {
     })
 }
 
+// 用于执行副作用函数，并通过执行副作用函数的过程触发 proxy，将副作用函数存入桶中
 export function effect(fn: any, options: any = {}) {
   const effectFn: any = () => {
     // 如果因为修改了响应式数据触发依赖，则我们先对之前存的关于这个副作用函数的依赖全部删除，在触发 fn() 的时候会重新添加依赖

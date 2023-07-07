@@ -19,6 +19,7 @@ export function watch(source: any, cb: any, options: any = {}) {
     getter = () => traverse(source)
   }
 
+  // 传给用户使用，当 watch 的回调函数是异步（如：fetch 请求）等的时候，用户可以通过这个来注册一个过期回调，用于清除上次的副作用函数。
   function onInvalidate(fn: any) {
     // 将过期回调赋值到 cleanup 上
     cleanup = fn

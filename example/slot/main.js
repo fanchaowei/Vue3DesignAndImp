@@ -2,7 +2,7 @@ import { createApp, Fragment } from '../../lib/vue3-design-and-imp.esm.js'
 
 // 有插槽的子组件
 const MyComponent = {
-  name: 'MyComponent',
+  name: 'ChildComponent',
   setup() {},
   render() {
     return {
@@ -27,18 +27,30 @@ const MyComponent = {
 
 // 父组件
 const fatherComp = {
-  type: MyComponent,
-  children: {
-    header() {
-      return { type: 'h1', children: '我是标题' }
-    },
-    body() {
-      return { type: 'section', children: '我是内容' }
-    },
-    footer() {
-      return { type: 'p', children: '我是注脚' }
-    },
+  name: 'FatherComponent',
+  setup() {},
+  render() {
+    // 返回子节点的虚拟节点
+    return {
+      type: MyComponent,
+      children: {
+        header() {
+          return { type: 'h1', children: '我是标题' }
+        },
+        body() {
+          return { type: 'section', children: '我是内容' }
+        },
+        footer() {
+          return { type: 'p', children: '我是注脚' }
+        },
+      },
+    }
   },
 }
 
-createApp(fatherComp, document.querySelector('#app'))
+// 父组件的虚拟节点
+const fatherVNode = {
+  type: fatherComp,
+}
+
+createApp(fatherVNode, document.querySelector('#app'))
